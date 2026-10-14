@@ -49,17 +49,23 @@ st.markdown(
 
 import os
 
+# قراءة المفاتيح مباشرة من متغيرات النظام في Render أو Streamlit
 url = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_KEY")
 
-if not url and hasattr(st, "secrets"):
-    url = st.secrets.get("SUPABASE_URL", "")
-    key = st.secrets.get("SUPABASE_KEY", "")
-
+if not url:
+    try:
+        url = st.secrets.get("SUPABASE_URL", "")
+        key = st.secrets.get("SUPABASE_KEY", "")
+    except Exception:
+        pass
 
 if not url or not key:
-    st.error("❌ خطأ: لم يتم العثور على مفاتيح الاتصال بـ Supabase.")
+    st.error(
+        "❌ خطأ: لم يتم العثور على مفاتيح الاتصال بـ Supabase في متغيرات" " البيئة."
+    )
     st.stop()
+
 
 supabase: Client = create_client(url, key)
 
