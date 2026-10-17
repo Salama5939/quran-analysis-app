@@ -152,10 +152,11 @@ with tab1:
             if hsor_results:
                 st.session_state.search_results = {"type": "hsor", "data": hsor_results}
             else:
+                # البحث في المصحف الشامل باستخدام النص المجرد (بدون تشكيل)
                 quran_res = (
                     supabase.table("full_quran")
                     .select("*")
-                    .ilike("ayah_text", f"%{raw_query}%")
+                    .ilike("plain_ayah_text", f"%{raw_query}%")
                     .execute()
                 )
                 st.session_state.search_results = {
