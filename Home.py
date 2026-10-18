@@ -1,4 +1,5 @@
 import streamlit as st
+import theme  # استدعاء ملف التنسيق المركزي
 
 st.set_page_config(
     page_title="النظام التحليلي الشامل للتدبر القرآني",
@@ -6,19 +7,14 @@ st.set_page_config(
     layout="wide",
 )
 
+# تطبيق التنسيق المركزي (الاتجاه، الخطوط، وإصلاح القائمة الجانبية)
+theme.apply_custom_theme()
+
+# تنسيقات CSS الخاصة بالصفحة الرئيسية فقط (البطاقات والألوان)
 st.markdown(
     """
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap');
-        
-        html, body, [class*="css"] {
-            font-family: 'Cairo', sans-serif;
-            direction: rtl;
-            text-align: right;
-        }
-        
         h1, h2, h3 {
-            font-family: 'Amiri', serif;
             color: #F1C40F !important;
         }
         

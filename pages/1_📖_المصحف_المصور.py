@@ -1,7 +1,9 @@
 import os
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from supabase import Client, create_client
+import theme  # استدعاء ملف التنسيق المركزي
 
 st.set_page_config(
     page_title="تجربة المصحف المصور والبحث المتقدم",
@@ -9,27 +11,17 @@ st.set_page_config(
     layout="wide",
 )
 
+# تطبيق التنسيق المركزي
+theme.apply_custom_theme()
+
+# تنسيق إضافي خاص بجدول هذه الصفحة فقط (لتكبير خط الرسم العثماني)
 st.markdown(
     """
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap');
-        
-        html, body, [class*="css"] {
-            font-family: 'Cairo', sans-serif;
-            direction: rtl;
-            text-align: right;
-        }
-        
-        h1, h2, h3 {
-            font-family: 'Amiri', serif;
-        }
-        
-        /* فرض اتجاه اليمين لليسار وتكبير الخط داخل الجداول لتناسب الرسم العثماني */
         [data-testid="stDataFrame"] {
             direction: rtl;
             text-align: right;
         }
-        
         [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
             direction: rtl !important;
             text-align: right !important;
@@ -124,7 +116,6 @@ with tab1:
                     f" الصفحة {end_page}"
                 )
 
-                # عرض صفحات الـ SVG مع تقليص المسافة لتناسب مسمى السورة في الأسفل
                 for p in range(start_page, end_page + 1):
                     svg_filename = f"{p:03d}.svg"
                     svg_path = os.path.join("quran_svg", svg_filename)
@@ -133,9 +124,7 @@ with tab1:
                         with open(svg_path, "r", encoding="utf-8") as f:
                             svg_content = f.read()
 
-                        st.markdown(
-                            "<br>", unsafe_allow_html=True
-                        )  # مسافة خفيفة ومناسبة فقط
+                        st.markdown("<br>", unsafe_allow_html=True)
                         st.markdown(svg_content, unsafe_allow_html=True)
                     else:
                         st.warning(
@@ -148,7 +137,7 @@ with tab1:
 
 
 # ------------------------------------------
-# التبويب الثاني: البحث واستعراض الآيات بالرسم العثماني
+# التبويب الثاني: البحث واستعراض الآيات بالرسم العثماني مع التلاوة
 # ------------------------------------------
 with tab2:
     st.subheader("استعراض ونطاق الآيات الكريمة بالرسم العثماني من قاعدة البيانات")
@@ -161,24 +150,28 @@ with tab2:
             selected_surah_t2 = st.selectbox(
                 "اختر السورة:", surah_list_t2, key="surah_select_t2"
             )
+            # استخراج رقم السورة برمجياً بناءً على موقعها في القائمة (يبدأ من 0 فنضيف 1)
+            surah_num = surah_list_t2.index(selected_surah_t2) + 1
+
         with col_a2:
             start_ayah = st.number_input(
                 "من آية رقم:", min_value=1, max_value=286, value=1, key="start_ayah_t2"
             )
         with col_a3:
             end_ayah = st.number_input(
-                "إلى آية رقم:", min_value=1, max_value=286, value=5, key="end_ayah_t2"
+                "إلى آية رقم:", min_value=1, max_value=286, value=7, key="end_ayah_t2"
             )
 
-        if st.button("بحث واستعراض الآيات 🔍", key="btn_search_t2"):
+        if st.button(
+            "بحث واستعراض الآيات وتشغيل التلاوة 🔍", key="btn_search_t2", type="primary"
+        ):
             if start_ayah > end_ayah:
                 st.error(
                     "⚠️ خطأ: آية البداية يجب أن تكون أقل من أو مساوية لأية النهاية."
                 )
             else:
-                with st.spinner("جاري جلب الآيات من قاعدة البيانات..."):
+                with st.spinner("جاري جلب الآيات والتلاوة..."):
                     try:
-                        # استعلام مباشر من جدول full_quran
                         response = (
                             supabase.table("full_quran")
                             .select("ayah_number, ayah_text")
@@ -192,17 +185,17 @@ with tab2:
                         ayahs_data = response.data
 
                         if ayahs_data:
-                            st.markdown(
-                                f"""
-                    <div style='background-color: #1E3D59; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px;'>
-                        <h2 style='color: #F1C40F; margin: 0;'>سورة {selected_surah_t2}</h2>
-                        <p style='color: #ECF0F1; margin: 5px 0 0 0; font-size: 16px;'>عرض الآيات الكريمة من (الآية {start_ayah} إلى الآية {end_ayah}) - إجمالي الآيات المستعرضة: {len(ayahs_data)}</p>
-                    </div>
-                    """,
-                                unsafe_allow_html=True,
+                            # 1. شريط العنوان الأنيق (بديل المربع الضخم)
+                            st.success(
+                                f"✅ **سورة {selected_surah_t2}** | عرض الآيات من ({start_ayah}) إلى ({end_ayah}) | إجمالي الآيات المستعرضة: {len(ayahs_data)}"
                             )
 
-                            # تحويل البيانات وترتيب الأعمدة لتبدأ برقم الآية يميناً ثم منطوق الآية يساراً
+                            # 2. التلميح الذكي لتوسيع الآيات الطويلة
+                            st.info(
+                                "💡 **تلميح:** إذا كانت الآية طويلة، قم بالضغط مرتين (Double Click) على نص الآية لتوسيع الخلية وقراءتها كاملة."
+                            )
+
+                            # 3. عرض الجدول بالرسم العثماني
                             df_ayahs = pd.DataFrame(ayahs_data)
                             df_ayahs = df_ayahs[["ayah_number", "ayah_text"]]
                             df_ayahs.columns = [
@@ -222,11 +215,65 @@ with tab2:
                                         st.column_config.TextColumn(
                                             "منطوق الآية بالرسم العثماني",
                                             width="large",
-                                            help="الآيات الكريمة بالرسم العثماني",
                                         )
                                     ),
                                 },
                             )
+
+                            st.markdown("<br>", unsafe_allow_html=True)
+
+                            # 4. دمج مشغل الصوت التلقائي (HTML/JS Player)
+                            audio_urls = []
+                            ayah_numbers = []
+                            surah_str = f"{surah_num:03d}"
+
+                            for item in ayahs_data:
+                                current_ayah_num = item["ayah_number"]
+                                ayah_str = f"{current_ayah_num:03d}"
+                                audio_urls.append(
+                                    f"https://everyayah.com/data/Maher_AlMuaiqly_64kbps/{surah_str}{ayah_str}.mp3"
+                                )
+                                ayah_numbers.append(str(current_ayah_num))
+
+                            js_urls = str(audio_urls)
+                            js_ayahs = str(ayah_numbers)
+
+                            html_player = f"""
+                            <div style="direction: rtl; text-align: right; font-family: 'Cairo', sans-serif; background-color: #2C3E50; padding: 15px; border-radius: 8px; border-top: 4px solid #27AE60; color: white;">
+                                <h4 id="status-text" style="color: #F1C40F; margin-top: 0;">🎧 التلاوة التلقائية: جاري التجهيز...</h4>
+                                <audio id="quran-player" controls autoplay style="width: 100%; border-radius: 5px; outline: none;">
+                                    متصفحك لا يدعم تشغيل الصوت.
+                                </audio>
+                            </div>
+
+                            <script>
+                                const urls = {js_urls};
+                                const ayahs = {js_ayahs};
+                                let currentIndex = 0;
+                                
+                                const player = document.getElementById("quran-player");
+                                const statusText = document.getElementById("status-text");
+
+                                function playAyah(index) {{
+                                    if(index < urls.length) {{
+                                        player.src = urls[index];
+                                        statusText.innerText = "🎧 جاري تلاوة الآية رقم (" + ayahs[index] + ")";
+                                        player.play();
+                                    }} else {{
+                                        statusText.innerText = "✅ انتهت تلاوة الآيات المحددة.";
+                                    }}
+                                }}
+
+                                player.addEventListener("ended", function() {{
+                                    currentIndex++;
+                                    playAyah(currentIndex);
+                                }});
+
+                                playAyah(currentIndex);
+                            </script>
+                            """
+                            components.html(html_player, height=120)
+
                         else:
                             st.warning(
                                 "⚠️ لم يتم العثور على آيات مطابقة لهذا النطاق في قاعدة البيانات."

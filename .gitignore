@@ -17,10 +17,14 @@ __pycache__/
 Thumbs.db
 .DS_Store
 
+# Ignore temporary files created by text editors or IDEs
+.Drafts
+
 *.docx
 
 *.pptx
 
+*.xlsx
 
 .Backups/
 
