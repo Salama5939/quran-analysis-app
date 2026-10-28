@@ -95,7 +95,6 @@ surah_mapping_db = load_surah_mapping_details()
 def get_or_create_word_code(keyword):
     """التحقق هل الكلمة مسجلة مسبقاً لجلب الـ word_code الخاص بها، أو إنشاء جديد"""
     try:
-        # 1. البحث هل الكلمة موجودة مسبقاً في قاعدة البيانات
         res = (
             supabase.table("ayah_group_relations")
             .select("word_code")
@@ -107,7 +106,6 @@ def get_or_create_word_code(keyword):
         if data and len(data) > 0 and data[0].get("word_code"):
             return int(data[0].get("word_code"))
 
-        # 2. إذا لم تكن موجودة، جلب أقصى قيمة كود عامة وزيادة 1
         res_max = (
             supabase.table("ayah_group_relations")
             .select("word_code")
@@ -174,7 +172,6 @@ with tab1:
         " والذكي)"
     )
 
-    # معالجة أمر مسح الشاشة وإعادة تعيين الحقول تماماً
     if st.session_state.get("clear_screen_flag_master", False):
         st.session_state.search_results_master = {"hsor": [], "quran": []}
         st.session_state.searched_word_master = ""
@@ -202,8 +199,6 @@ with tab1:
             st.session_state.searched_word_master = raw_query
             norm_target = normalize_arabic(raw_query)
 
-            # 1. البحث المباشر والمفلتر من السيرفر في الحصر المعتمد (ayah_group_relations)
-            # بدلاً من جلب كل الجدول، نستعلم بالكلمة مباشرة أو نجلب السجلات المطابقة
             resp_hsor = (
                 supabase.table("ayah_group_relations")
                 .select("*")
@@ -212,7 +207,6 @@ with tab1:
             )
             hsor_results = resp_hsor.data if resp_hsor.data else []
 
-            # دعم بحث إضافي لو كانت مدخلة بتنسيق مشابه
             if not hsor_results:
                 resp_all = supabase.table("ayah_group_relations").select("*").execute()
                 all_hsor = resp_all.data if resp_all.data else []
@@ -240,7 +234,6 @@ with tab1:
                 ),
             )
 
-            # 2. البحث في المصحف الشامل (full_quran)
             if " " in raw_query:
                 quran_res = (
                     supabase.table("full_quran")
@@ -293,7 +286,6 @@ with tab1:
     current_word = st.session_state.searched_word_master
 
     if current_word:
-        # --- الجدول الأول: نتائج الحصر المعتمد ---
         if res_hsor:
             st.success(
                 f"✅ تم العثور على {len(res_hsor)} نتيجة مطابقة في **حصرك المعتمد**"
@@ -333,7 +325,6 @@ with tab1:
 
         st.markdown("---")
 
-        # --- الجدول الثاني: نتائج المصحف الشامل للمراجعة والترحيل الذكي ---
         if res_quran:
             count_hsor = len(res_hsor)
             count_quran = len(res_quran)
@@ -412,7 +403,6 @@ with tab1:
                 duplicate_attempt_count = 0
                 duplicate_details = []
 
-                # جلب أو توريث الـ word_code الموحد لهذه الكلمة حصرياً
                 target_word_code = get_or_create_word_code(current_word)
 
                 for index, row in edited_df.iterrows():
@@ -486,10 +476,305 @@ with tab1:
                 f"❌ لم يتم العثور على أي نتائج في المصحف الشامل لـ: '{current_word}'."
             )
 
-# باقي التبويبات (2، 3، 4)
+# التبويب الثاني: البحث التحليلي والموضوعي (محدث بالاستعلام المباشر والذكي)
 with tab2:
-    st.info("التبويب الثاني يعمل بنفس الإعدادات السابقة.")
+    st.subheader(
+        "البحث المتقدم في الكلمات المحصورة والمقاصد والمجموعات الثمانية (مرتبة حسب"
+        " المجموعة والسورة والآية)"
+    )
+
+    col_t2_1, col_t2_2 = st.columns([3, 2])
+    with col_t2_1:
+        analysis_query = st.text_input(
+            "أدخل الكلمة أو الموضوع للبحث في التحليلات:",
+            placeholder="مثال: الغفار، المجيد، نور السموات...",
+            key="analysis_search",
+        )
+    with col_t2_2:
+        group_filter = st.selectbox(
+            "تصفية حسب المجموعة الثمانية (اختياري):",
+            [
+                "الكل",
+                "المجموعة 1",
+                "المجموعة 2",
+                "المجموعة 3",
+                "المجموعة 4",
+                "المجموعة 5",
+                "المجموعة 6",
+                "المجموعة 7",
+                "المجموعة 8",
+            ],
+            key="t2_group_sel",
+        )
+
+    col_btn1, col_btn2 = st.columns([1, 5])
+    with col_btn1:
+        run_analysis_search = st.button("🔍 بحث تحليلي", key="btn_t2_search")
+
+    if run_analysis_search or analysis_query or group_filter != "الكل":
+        with st.spinner("جاري الاستعلام والتحليل..."):
+            # بناء استعلام قاعدة البيانات مباشرة (Server-side filtering)
+            query_builder = supabase.table("ayah_group_relations").select("*")
+
+            if group_filter != "الكل":
+                g_num = int(group_filter.replace("المجموعة ", ""))
+                query_builder = query_builder.eq("group_id", g_num)
+
+            if analysis_query.strip():
+                raw_q_t2 = analysis_query.strip()
+                norm_q_t2 = normalize_arabic(raw_q_t2)
+                # استعلام مباشر بالكلمة المطابقة أو عبر الـ ilike
+                query_builder = query_builder.ilike("topic_or_keyword", f"%{raw_q_t2}%")
+
+            response_t2 = query_builder.execute()
+            all_records = response_t2.data if response_t2.data else []
+
+            # فلترة وتحقق إضافي للتأكد من مطابقة الكلمات المستقلة أو العبارات بدقة
+            analysis_results = []
+            norm_query_t2 = (
+                normalize_arabic(analysis_query) if analysis_query.strip() else ""
+            )
+
+            for record in all_records:
+                word = str(record.get("topic_or_keyword", "")).strip()
+                norm_word = normalize_arabic(word)
+
+                if not analysis_query.strip():
+                    analysis_results.append(record)
+                else:
+                    if " " in norm_query_t2:
+                        if norm_query_t2 in norm_word:
+                            analysis_results.append(record)
+                    else:
+                        words_in_word = re.findall(r"[\u0600-\u06FF]+", norm_word)
+                        if norm_query_t2 in words_in_word or norm_query_t2 == norm_word:
+                            analysis_results.append(record)
+
+            if analysis_results:
+                for record in analysis_results:
+                    s_name = str(record.get("surah_name", "")).strip()
+                    if (
+                        not record.get("group_id")
+                        or int(record.get("group_id", 0)) == 0
+                    ):
+                        record["group_id"] = surah_mapping_db.get(s_name, {}).get(
+                            "group_id", 1
+                        )
+
+                analysis_results = sorted(
+                    analysis_results,
+                    key=lambda x: (
+                        int(x.get("group_id", 1)),
+                        int(x.get("surah_serial", 0)),
+                        int(x.get("ayah_number", 0)),
+                    ),
+                )
+
+                st.success(
+                    f"✅ تم العثور على {len(analysis_results)} سجل تحليلي مطابق (مرتبة"
+                    " حسب المجموعة والسورة والآية)."
+                )
+                for record in analysis_results:
+                    word = record.get("topic_or_keyword", "-")
+                    g_id = record.get("group_id", "-")
+                    notes = record.get("notes", "-")
+                    surah = record.get("surah_name", "-")
+                    surah_num = record.get("surah_serial", "-")
+                    ayah = record.get("ayah_number", "-")
+                    text = record.get("ayah_text", "")
+                    st.markdown(
+                        f"""
+                <div style='background-color: #34495E; padding: 12px; border-radius: 6px; margin-bottom: 8px;'>
+                    <p style='margin: 0; font-weight: bold; color: #F39C12;'>الكلمة / الموضوع: {word} | المجموعة {g_id}</p>
+                    <p class='quran-ayah' style='font-size: 16px; margin: 4px 0;'>{text} ({surah} [رقم {surah_num}]: {ayah})</p>
+                    <p style='margin: 0; font-size: 14px; color: #ECF0F1;'>💡 المقصد: {notes}</p>
+                </div>
+                """,
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.warning("❌ لم يتم العثور على نتائج تحليلية مطابقة لشروط البحث.")
+
+# التبويب الثالث: استعراض السور والمقاصد
 with tab3:
-    st.info("التبويب الثالث يعمل بنفس الإعدادات السابقة.")
+    st.subheader("📖 الجدول الشامل لمقاصد السور وربطها بالمجموعات الثمانية")
+    st.markdown(
+        "<p style='color: #BDC3C7;'>استعرض خريطة السور القرآنية الـ 114 مرتبطةً"
+        " بمقاصدها وتصنيفها ضمن المجموعات الثمانية، مع إمكانية الفلترة السريعة.</p>",
+        unsafe_allow_html=True,
+    )
+
+    col_t3_1, col_t3_2 = st.columns([2, 2])
+    with col_t3_1:
+        selected_t3_group = st.selectbox(
+            "تصفية السور حسب المجموعة الثمانية:",
+            [
+                "جميع المجموعات (114 سورة)",
+                "المجموعة 1",
+                "المجموعة 2",
+                "المجموعة 3",
+                "المجموعة 4",
+                "المجموعة 5",
+                "المجموعة 6",
+                "المجموعة 7",
+                "المجموعة 8",
+            ],
+            key="t3_group_filter",
+        )
+
+    with col_t3_2:
+        search_surah_name = st.text_input(
+            "بحث سريع عن سورة:",
+            placeholder="اكتب اسم السورة (مثل: البقرة، يوسف)...",
+            key="t3_surah_search",
+        )
+
+    query_t3 = supabase.table("surah_objectives").select("*")
+
+    if selected_t3_group != "جميع المجموعات (114 سورة)":
+        g_id_val = int(selected_t3_group.replace("المجموعة ", ""))
+        query_t3 = query_t3.eq("group_id", g_id_val)
+
+    if search_surah_name.strip():
+        query_t3 = query_t3.ilike("surah_name", f"%{search_surah_name.strip()}%")
+
+    response_t3 = query_t3.order("surah_number").execute()
+    surah_objs_data = response_t3.data
+
+    if surah_objs_data:
+        st.success(f"✅ تم العثور على {len(surah_objs_data)} سورة مطابقة.")
+
+        df_surahs_view = pd.DataFrame(surah_objs_data)
+        df_surahs_view = df_surahs_view[
+            ["surah_number", "surah_name", "group_id", "surah_objective"]
+        ]
+        df_surahs_view.columns = [
+            "مسلسل",
+            "اسم السورة",
+            "المجموعة",
+            "تفاصيل مقصد السورة",
+        ]
+
+        st.dataframe(
+            df_surahs_view,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "مسلسل": st.column_config.NumberColumn(
+                    "مسلسل", width="small", format="%d"
+                ),
+                "اسم السورة": st.column_config.TextColumn("اسم السورة", width="medium"),
+                "المجموعة": st.column_config.NumberColumn(
+                    "المجموعة", width="small", format="%d"
+                ),
+                "تفاصيل مقصد السورة": st.column_config.TextColumn(
+                    "تفاصيل مقصد السورة", width="large"
+                ),
+            },
+        )
+    else:
+        st.warning("❌ لم يتم العثور على سور مطابقة لشروط البحث أو الفلترة.")
+
+# التبويب الرابع: تقرير الكلمات المحصورة
 with tab4:
-    st.info("التبويب الرابع يعمل بنفس الإعدادات السابقة.")
+    st.subheader("📈 التقرير التحليلي للكلمات المحصورة (حسب المجموعة والترتيب الأبجدي)")
+    st.markdown(
+        "<p style='color: #BDC3C7;'>قم بتصفية الكلمات حسب المجموعة المطلوبة أولاً،"
+        " لترى الكلمات مرتبة أبجدياً مع إجمالي الآيات والتكرارات.</p>",
+        unsafe_allow_html=True,
+    )
+
+    col_rep1, col_rep2 = st.columns([2, 2])
+    with col_rep1:
+        selected_group_filter = st.selectbox(
+            "اختر المجموعة للعرض:",
+            [
+                "جميع المجموعات",
+                "المجموعة 1",
+                "المجموعة 2",
+                "المجموعة 3",
+                "المجموعة 4",
+                "المجموعة 5",
+                "المجموعة 6",
+                "المجموعة 7",
+                "المجموعة 8",
+            ],
+            key="rep_group_sel",
+        )
+
+    with col_rep2:
+        st.write("")
+        st.write("")
+        run_report = st.button(
+            "📊 عرض وتحديث التقرير المنظم", key="btn_report_filtered"
+        )
+
+    if run_report:
+        with st.spinner("جاري استخراج وتحليل كافة البيانات من قاعدة البيانات..."):
+            # استعلام مباشر للأعمدة المطلوبة فقط وبدون حدود تقييدية لتشمل كل السجلات
+            query = supabase.table("ayah_group_relations").select(
+                "topic_or_keyword, group_id, frequency_count"
+            )
+
+            if selected_group_filter != "جميع المجموعات":
+                g_num = int(selected_group_filter.replace("المجموعة ", ""))
+                query = query.eq("group_id", g_num)
+
+            # استعلام آمن لجلب كافة البيانات (تجاوز حد الـ 1000 صف افتراضياً في Supabase باستخدام range إن أمكن، أو جلبهم دفعة واحدة)
+            # بما أننا نستخدم select للأعمدة المحددة، سنقوم بجلب البيانات بدون limit مقيد (أو بمدى واسع جداً يغطي كافة السجلات)
+            rep_res = query.range(0, 99999).execute()
+            rep_data = rep_res.data
+
+            if rep_data:
+                df_rep = pd.DataFrame(rep_data)
+
+                df_rep["group_id"] = pd.to_numeric(
+                    df_rep["group_id"], errors="coerce"
+                ).fillna(1)
+
+                def get_unique_groups(series):
+                    unique_g = sorted(
+                        list(set([int(x) for x in series if pd.notna(x)]))
+                    )
+                    return ", ".join([str(g) for g in unique_g])
+
+                df_grouped = (
+                    df_rep.groupby("topic_or_keyword")
+                    .agg(
+                        عدد_الآيات_المسجلة=("topic_or_keyword", "count"),
+                        إجمالي_التكرارات=("frequency_count", "sum"),
+                        المجموعات_المرتبطة=("group_id", get_unique_groups),
+                    )
+                    .reset_index()
+                )
+
+                df_grouped = df_grouped.sort_values(
+                    by="topic_or_keyword", ascending=True
+                )
+
+                total_unique_words = len(df_grouped)
+
+                st.success(
+                    f"✅ إجمالي عدد الكلمات الفريدة الناتجة في ({selected_group_filter}):"
+                    f" **{total_unique_words} كلمة** (تم فحص كافة السجلات بنجاح)"
+                )
+
+                st.dataframe(
+                    df_grouped.rename(
+                        columns={
+                            "topic_or_keyword": "الكلمة / الموضوع",
+                            "المجموعات_المرتبطة": "رقم المجموعة (المجموعات)",
+                        }
+                    ),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.warning(
+                    f"⚠️ لا توجد بيانات مسجلة مطابقة لـ ({selected_group_filter})."
+                )
+    else:
+        st.info(
+            "💡 اختر المجموعة من القائمة واضغط على زر **عرض وتحديث التقرير المنظم**"
+            " لبدء الاستعراض الشامل."
+        )

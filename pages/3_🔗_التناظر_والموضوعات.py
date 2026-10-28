@@ -13,6 +13,8 @@ st.set_page_config(
 # تطبيق التنسيق المركزي
 theme.apply_custom_theme()
 
+# إضافة زر العودة السريع للرئيسية
+theme.add_home_button()
 # تنسيق إضافي لتكبير الخط داخل الجداول لتسهيل القراءة
 st.markdown(
     """

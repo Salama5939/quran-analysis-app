@@ -18,8 +18,7 @@ Thumbs.db
 .DS_Store
 
 # Ignore temporary files created by text editors or IDEs
-.Drafts
-
+.Drafts/*.*
 *.docx
 
 *.pptx
