@@ -1,10 +1,10 @@
 import streamlit as st
 
-
 def apply_custom_theme():
     """دالة مركزية لتطبيق التصميم الفاتح الموحد، الخطوط الفاخرة، وتنسيق القائمة
 
-    الجانبية، وإخفاء شريط النشر العلوي (Deploy) والشريط الجانبي بالكامل.
+    الجانبية، وإخفاء شريط النشر العلوي (Deploy) والشريط الجانبي بالكامل،
+    وإتاحة التمرير لجميع القوائم المنسدلة في كافة صفحات التطبيق.
     """
     st.markdown(
         """
@@ -28,6 +28,17 @@ def apply_custom_theme():
             }
             section[data-testid="stSidebarNav"] {
                 display: none !important;
+            }
+
+            /* فرض ظهور شريط التمرير وارتفاع كافٍ لجميع القوائم المنبثقة والقوائم المنسدلة */
+            div[data-baseweb="popover"], div[role="listbox"], ul[role="listbox"] {
+                max-height: 400px !important;
+                overflow-y: auto !important;
+            }
+            
+            div[data-baseweb="menu"] {
+                max-height: 400px !important;
+                overflow-y: auto !important;
             }
 
             /* استيراد الخطوط الفاخرة */

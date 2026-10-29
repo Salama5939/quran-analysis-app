@@ -2,172 +2,154 @@ import os
 import streamlit as st
 import theme  # استدعاء ملف التنسيق المركزي
 
-# إعداد الصفحة مع إبقاء القائمة الجانبية ظاهرة وثابتة
+# إعدادات الصفحة
 st.set_page_config(
-    page_title="النظام التحليلي الشامل للتدبر القرآني",
+    page_title="المصحف الشريف - مشروع المصحف الإلكتروني",
     page_icon="📖",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
-# تطبيق التنسيق المركزي وزر الرئيسية
+# تطبيق التنسيق المركزي الموحد
 theme.apply_custom_theme()
 
-# رأس الصفحة الترحيبي البصري
+# العنوان الرئيسي للتطبيق
 st.markdown(
-    """
-    <div style="text-align: center; padding: 20px; background-color: #F4E8C1; border-radius: 10px; border-bottom: 4px solid #2C221E; margin-bottom: 25px;">
-        <h1 style="color: #2C221E; font-family: 'Amiri', serif; margin: 0;">📖 النظام التحليلي الشامل للتدبر القرآني والإضافة الذكية</h1>
-        <p style="color: #5C4033; font-size: 18px; margin-top: 10px;">منصة رقمية أكاديمية متقدمة لتدبر سور وآيات كلمات القرآن العظيم، والاستعراض البصري بالرسم العثماني الأصلي.</p>
-    </div>
-""",
+    "<h1 style='text-align: center; color: #F1C40F;'>📖 النظام التحليلي الشامل"
+    " للتدبر القرآن العظيم و البحث الذكي</h1>",
     unsafe_allow_html=True,
 )
-
 st.markdown(
-    """
-    <h3 style="text-align: center; color: #2C221E; font-family: 'Cairo', sans-serif; margin-bottom: 20px;">
-        🧭 اختر البوابة التفاعلية للبدء الفوري
-    </h3>
-    <p style="text-align: center; color: #7F8C8D; font-size: 14px; margin-top: -15px;">
-        انقر على أي زر أسفل البوابات للانتقال السريع للقسم المطلوب.
-    </p>
-""",
+    "<p style='text-align: center; color: #BDC3C7;'>منصة رقمية أكاديمية"
+    " متقدمة لتدبر سور وآيات القرآن العظيم، والاستعراض البصري بالرسم العثماني"
+    " الأصلي.</p>",
     unsafe_allow_html=True,
 )
-
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ==========================================
-# شبكة البوابات الرئيسية (4 أعمدة × صفين لـ 8 صفحات)
-# ==========================================
+# إضافة زر تحميل دليل المُتدبّر على الجانب الأيسر (أو في المنتصف العلوي تحت العنوان الرئيسي)
+col_space, col_dl_btn, col_right_space = st.columns([1.5, 2, 1.5])
+with col_dl_btn:
+    pdf_filename = "دليل_المتدبر_للقرآن_الكريم.pdf"
+    if os.path.exists(pdf_filename):
+        with open(pdf_filename, "rb") as f:
+            pdf_data = f.read()
+        st.download_button(
+            label="📥 تحميل دليل المُتدبّر الشامل (PDF)",
+            data=pdf_data,
+            file_name="دليل_المتدبر_للقرآن_الكريم.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+        )
+    else:
+        st.warning("⚠️ ملف دليل المتدبر غير موجود حالياً في مجلد المشروع.")
 
-# الصف الأول (الأعمدة الأربعة الأولى)
-col1, col2, col3, col4 = st.columns(4)
+st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("---")
 
-with col1:
+st.markdown(
+    "<h3 style='text-align: center; color: #E67E22;'>🎯 اختر البوابة التفاعلية"
+    " للبدء الفوري</h3>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<p style='text-align: center; color: #7F8C8D; font-size: 14px;'>انقر على أي"
+    " زر أدناه للانتقال السريع للقسم المطلوب.</p>",
+    unsafe_allow_html=True,
+)
+st.markdown("<br>", unsafe_allow_html=True)
+
+# تصميم بوابات الانتقال التفاعلية الثمانية في صفوف متناسقة
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.markdown("#### 📖 المصحف المصور")
     st.markdown(
-        """
-        <div style="background-color: #FBF9F1; padding: 15px; border-radius: 8px; border: 1px solid #E2D9C2; min-height: 160px; text-align: right;">
-            <h4 style="color: #2C221E; margin-top: 0;">📖 المصحف المصور</h4>
-            <p style="color: #666; font-size: 13px;">استعراض صفحات المصحف الشريف بالرسم العثماني الدقيق وبجودة عالية للتصفح البصري.</p>
-        </div>
-    """,
+        "<p style='font-size: 13px; color: #95A5A6;'>استعراض صفحات المصحف"
+        " الشريف، بالرسم العثماني الدقيق لقرائته والاستماع إليه والحفظ"
+        " والمراجعة.</p>",
         unsafe_allow_html=True,
     )
-    if st.button("انتقل إلى المصحف المصور 👈", key="nav_p1", use_container_width=True):
+    if st.button("انتقل إلى المصحف المصور 👈", key="btn_quran"):
         st.switch_page("pages/1_📖_المصحف_المصور.py")
 
-with col2:
+with c2:
+    st.markdown("#### 🔍 نظام البحث الذكي بالكلمة أو المقطع")
     st.markdown(
-        """
-        <div style="background-color: #FBF9F1; padding: 15px; border-radius: 8px; border: 1px solid #E2D9C2; min-height: 160px; text-align: right;">
-            <h4 style="color: #2C221E; margin-top: 0;">📊 النظام التحليلي</h4>
-            <p style="color: #666; font-size: 13px;">البحث الفوري في المصحف المعتمد، استقراء المجموعات، ومقاصد السور والتقارير.</p>
-        </div>
-    """,
+        "<p style='font-size: 13px; color: #95A5A6;'>البحث الفوري في المصحف"
+        " المعتقد، استقراء المجموعات، ومقاصد السور والتقارير.</p>",
         unsafe_allow_html=True,
     )
-    if st.button(
-        "انتقل إلى النظام التحليلي 👈", key="nav_p2", use_container_width=True
-    ):
-        st.switch_page("pages/2_📊_النظام_التحليلي.py")
+    if st.button("انتقل إلى النظام التحليلي 👈", key="btn_search"):
+        st.switch_page("pages/2_🔍_النظام_التحليلي.py")
 
-with col3:
+with c3:
+    st.markdown("#### 🔗 حصر التشابه والتناظر بين السور")
     st.markdown(
-        """
-        <div style="background-color: #FBF9F1; padding: 15px; border-radius: 8px; border: 1px solid #E2D9C2; min-height: 160px; text-align: right;">
-            <h4 style="color: #2C221E; margin-top: 0;">🔗 التناظر والموضوعات</h4>
-            <p style="color: #666; font-size: 13px;">استعراض وجوه التشابه والتناظر الموضوعي بين الآيات والسور القرآنية الكريمة.</p>
-        </div>
-    """,
+        "<p style='font-size: 13px; color: #95A5A6;'>استعراض وجوه التشابه"
+        " والتناظر الموضوعي بين السور القرآنية الكريمة.</p>",
         unsafe_allow_html=True,
     )
-    if st.button(
-        "انتقل إلى التناظر والموضوعات 👈", key="nav_p3", use_container_width=True
-    ):
+    if st.button("انتقل إلى التناظر والموضوعات 👈", key="btn_similarity"):
         st.switch_page("pages/3_🔗_التناظر_والموضوعات.py")
 
-with col4:
+with c4:
+    st.markdown("#### 🌐 الربط الموضوعي")
     st.markdown(
-        """
-        <div style="background-color: #FBF9F1; padding: 15px; border-radius: 8px; border: 1px solid #E2D9C2; min-height: 160px; text-align: right;">
-            <h4 style="color: #2C221E; margin-top: 0;">📚 الربط الموضوعي</h4>
-            <p style="color: #666; font-size: 13px;">محرك الربط الموضوعي والمقاصدي الذكي وتوزيع الكلمات على المجموعات.</p>
-        </div>
-    """,
+        "<p style='font-size: 13px; color: #95A5A6;'>محرك الربط الموضوعي والمقاصدي"
+        " الذكي وتوزيع الكلمات على المجموعات الثماني.</p>",
         unsafe_allow_html=True,
     )
-    if st.button("انتقل إلى الربط الموضوعي 👈", key="nav_p4", use_container_width=True):
-        st.switch_page("pages/4_📚_الربط_الموضوعي.py")
+    if st.button("انتقل إلى الربط الموضوعي 👈", key="btn_thematic"):
+        st.switch_page("pages/4_🌐_الربط_الموضوعي.py")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# الصف الثاني (الأعمدة الأربعة الأخرى)
-col5, col6, col7, col8 = st.columns(4)
-
-with col5:
+c5, c6, c7, c8 = st.columns(4)
+with c5:
+    st.markdown("#### 📈 الخريطة الإحصائية")
     st.markdown(
-        """
-        <div style="background-color: #FBF9F1; padding: 15px; border-radius: 8px; border: 1px solid #E2D9C2; min-height: 160px; text-align: right;">
-            <h4 style="color: #2C221E; margin-top: 0;">📈 الخريطة الإحصائية</h4>
-            <p style="color: #666; font-size: 13px;">لوحة المؤشرات التحليلية والرسوم البيانية التفاعلية وتصدير إحصاءات المجموعات.</p>
-        </div>
-    """,
+        "<p style='font-size: 13px; color: #95A5A6;'>لوحة المؤشرات التحليلية"
+        " والرسوم البيانية التفاعلية لتوزيع الكلمات والمجموعات والموضوعات"
+        " المحصورة.</p>",
         unsafe_allow_html=True,
     )
-    if st.button(
-        "انتقل إلى الخريطة الإحصائية 👈", key="nav_p5", use_container_width=True
-    ):
+    if st.button("انتقل إلى الخريطة الإحصائية 👈", key="btn_stats"):
         st.switch_page("pages/5_📈_الخريطة_الإحصائية.py")
 
-with col6:
+with c6:
+    st.markdown("#### 🔁 الآيات المحورية المكررة")
     st.markdown(
-        """
-        <div style="background-color: #FBF9F1; padding: 15px; border-radius: 8px; border: 1px solid #E2D9C2; min-height: 160px; text-align: right;">
-            <h4 style="color: #2C221E; margin-top: 0;">🔄 الآيات المحورية المكررة</h4>
-            <p style="color: #666; font-size: 13px;">تحليل الآيات الكبرى التي تتقاطع فيها الموضوعات المرتبطة بتسلسل المصحف.</p>
-        </div>
-    """,
+        "<p style='font-size: 13px; color: #95A5A6;'>التحليل الفكري للآيات التي"
+        " تتقاطع فيها الموضوعات المرتبطة بتسلسل المصحف.</p>",
         unsafe_allow_html=True,
     )
-    if st.button(
-        "انتقل إلى الآيات المحورية 👈", key="nav_p6", use_container_width=True
-    ):
-        st.switch_page("pages/6_🔄_الآيات_المحورية_المكررة.py")
+    if st.button("انتقل إلى الآيات المحورية 👈", key="btn_recurring"):
+        st.switch_page("pages/6_🔁_الايات_المحورية.py")
 
-with col7:
+with c7:
+    st.markdown("#### 🔎 البحث العام الشامل")
     st.markdown(
-        """
-        <div style="background-color: #FBF9F1; padding: 15px; border-radius: 8px; border: 1px solid #E2D9C2; min-height: 160px; text-align: right;">
-            <h4 style="color: #2C221E; margin-top: 0;">🔍 البحث العام الشامل</h4>
-            <p style="color: #666; font-size: 13px;">محرك البحث الشامل عبر كافة النصوص والجداول والآيات والمقاصد في قاعدة البيانات.</p>
-        </div>
-    """,
+        "<p style='font-size: 13px; color: #95A5A6;'>محرك البحث الشامل عبر كافة"
+        " النصوص، والجدول، والآيات والمقاصد في قاعدة البيانات.</p>",
         unsafe_allow_html=True,
     )
-    if st.button("انتقل إلى البحث الشامل 👈", key="nav_p7", use_container_width=True):
-        st.switch_page("pages/7_🔍_البحث_العام_الشامل.py")
+    if st.button("انتقل إلى البحث الشامل 👈", key="btn_global"):
+        st.switch_page("pages/7_🔎_البحث_الشامل.py")
 
-with col8:
+with c8:
+    st.markdown("#### 🗂️ أرشيف الحفظ والتدبر")
     st.markdown(
-        """
-        <div style="background-color: #FBF9F1; padding: 15px; border-radius: 8px; border: 1px solid #E2D9C2; min-height: 160px; text-align: right;">
-            <h4 style="color: #2C221E; margin-top: 0;">🎯 أرشيف الحفظ والتدبر</h4>
-            <p style="color: #666; font-size: 13px;">لوحة متابعة وإدارة رحلتك القرآنية في حفظ وتدبر الآيات الكريمة وتسجيل المراجعات.</p>
-        </div>
-    """,
+        "<p style='font-size: 13px; color: #95A5A6;'>لوحة متابعة وإدارة رحلتك"
+        " القرانية في حفظ وتدبر الآيات الكريمة وتسجيل المراجعات.</p>",
         unsafe_allow_html=True,
     )
-    if st.button("انتقل إلى أرشيف التدبر 👈", key="nav_p8", use_container_width=True):
-        st.switch_page("pages/8_🎯_أرشيف_الحفظ_والتدبر.py")
+    if st.button("انتقل إلى أرشيف التدبر 👈", key="btn_archive"):
+        st.switch_page("pages/8_🗂️_ارشيف_التدبر.py")
 
-st.markdown("<br><hr>", unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("---")
 st.markdown(
-    """
-    <p style="text-align: center; color: #7F8C8D; font-size: 13px;">
-        💡 <b>إرشادات الاستخدام:</b> يمكنك أيضاً الانتقال بين الأقسام في أي وقت عبر القائمة الجانبية (Sidebar) الظاهرة على اليسار.
-    </p>
-""",
+    "<p style='text-align: center; color: #F39C12; font-size: 12px;'>💡 لإرشادات"
+    " الاستخدام، يمكنك أيضاً الانتقال من الإشراف في أي وقت عبر القائمة الجانبية"
+    " (Sidebar) الظاهرة على اليسار.</p>",
     unsafe_allow_html=True,
 )

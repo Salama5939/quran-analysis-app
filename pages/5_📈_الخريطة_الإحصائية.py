@@ -59,7 +59,7 @@ def convert_df_to_excel(df):
     return processed_data
 
 
-# جلب البيانات التحليلية وتجاوز حد الـ 1000 سجل عبر جلب كافة البيانات
+# جلب البيانات التحليلية وتجاوز حد الـ 1000 سجل عبر جلب كافة البيانات مع الآيات
 with st.spinner("جاري جلب وحساب البيانات الإحصائية الشاملة من الخادم..."):
     all_dash_data = []
     batch_size = 1000
@@ -68,7 +68,10 @@ with st.spinner("جاري جلب وحساب البيانات الإحصائية 
     while True:
         resp = (
             supabase.table("ayah_group_relations")
-            .select("topic_or_keyword, group_id, frequency_count, surah_name")
+            .select(
+                "topic_or_keyword, group_id, frequency_count, surah_name,"
+                " ayah_number, ayah_text"
+            )
             .range(start, start + batch_size - 1)
             .execute()
         )
@@ -219,15 +222,26 @@ if all_dash_data:
         if selected_group_drill:
             filtered_group_df = (
                 df_dash[df_dash["group_id"] == selected_group_drill][
-                    ["topic_or_keyword", "surah_name"]
+                    [
+                        "topic_or_keyword",
+                        "surah_name",
+                        "ayah_number",
+                        "ayah_text",
+                    ]
                 ]
                 .drop_duplicates()
                 .reset_index(drop=True)
             )
-            filtered_group_df.columns = ["الكلمة المحصورة", "السورة"]
+            filtered_group_df.columns = [
+                "الكلمة المحصورة",
+                "السورة",
+                "رقم الآية",
+                "منطوق الآية",
+            ]
             st.info(
-                f"📌 الكلمات والموضوعات المختلفة التابعة للمجموعة ({selected_group_drill})"
-                f" وعددها ({len(filtered_group_df)} كلمة):"
+                f"📌 الكلمات والموضوعات المختلفة التابعة للمجموعة"
+                f" ({selected_group_drill}) وعددها"
+                f" ({len(filtered_group_df)} سجل):"
             )
             st.dataframe(
                 filtered_group_df,
@@ -237,7 +251,13 @@ if all_dash_data:
                     "الكلمة المحصورة": st.column_config.TextColumn(
                         "الكلمة المحصورة", width="medium"
                     ),
-                    "السورة": st.column_config.TextColumn("السورة", width="medium"),
+                    "السورة": st.column_config.TextColumn("السورة", width="small"),
+                    "رقم الآية": st.column_config.TextColumn(
+                        "رقم الآية", width="small"
+                    ),
+                    "منطوق الآية": st.column_config.TextColumn(
+                        "منطوق الآية", width="large"
+                    ),
                 },
             )
             # زر تصدير بيانات المجموعة إلى Excel
@@ -252,72 +272,102 @@ if all_dash_data:
             )
 
     with drill_tab2:
-        surahs_order_res = (
-            supabase.table("full_quran")
-            .select("surah_number, surah_name")
-            .order("surah_number", desc=False)
-            .execute()
+        st.markdown("#### 📖 البحث الذكي المباشر عن السورة لاستعراض موضوعاتها وآياتها")
+
+        # حقل نصي للبحث المباشر والمرن عن اسم السورة
+        search_surah_query = st.text_input(
+            "اكتب اسم السورة أو جزءاً منها للبحث الفوري (مثال: يونس، الأنفال،"
+            " يوسف):",
+            key="surah_smart_search_input_v4",
         )
 
-        if surahs_order_res.data:
-            seen = set()
-            surahs_list_ordered = []
-            for s in surahs_order_res.data:
-                s_name = s.get("surah_name")
-                if (
-                    s_name
-                    and s_name not in seen
-                    and s_name in df_dash["surah_name"].values
-                ):
-                    seen.add(s_name)
-                    surahs_list_ordered.append(s_name)
+        if search_surah_query:
+            matched_surahs_df = df_dash[
+                df_dash["surah_name"]
+                .astype(str)
+                .str.contains(search_surah_query, na=False)
+            ]
+
+            if not matched_surahs_df.empty:
+                available_matched_surahs = matched_surahs_df["surah_name"].unique()
+
+                selected_surah_drill = st.selectbox(
+                    "اختر السورة من النتائج المطابقة لبحثك:",
+                    available_matched_surahs,
+                    key="matched_surahs_selectbox_v5",
+                )
+
+                if selected_surah_drill:
+                    # تصفية البيانات مباشرة للسورة المختارة مع أرقام ومنطوق الآيات الجاهزة
+                    final_surah_df = (
+                        df_dash[df_dash["surah_name"] == selected_surah_drill][
+                            [
+                                "topic_or_keyword",
+                                "group_id",
+                                "ayah_number",
+                                "ayah_text",
+                            ]
+                        ]
+                        .drop_duplicates()
+                        .reset_index(drop=True)
+                    )
+
+                    final_surah_df.columns = [
+                        "الكلمة الموضوعية المحصورة",
+                        "رقم المجموعة",
+                        "رقم الآية",
+                        "منطوق الآية",
+                    ]
+
+                    st.success(
+                        f"📖 الكلمات والموضوعات المحصورة المرتبطة بـ **(سورة"
+                        f" {selected_surah_drill})** وعددها"
+                        f" ({len(final_surah_df)} موضوع):"
+                    )
+                    st.dataframe(
+                        final_surah_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "الكلمة الموضوعية المحصورة": (
+                                st.column_config.TextColumn(
+                                    "الكلمة الموضوعية المحصورة", width="medium"
+                                )
+                            ),
+                            "رقم المجموعة": st.column_config.NumberColumn(
+                                "رقم المجموعة", width="small", format="%d"
+                            ),
+                            "رقم الآية": st.column_config.TextColumn(
+                                "رقم الآية", width="small"
+                            ),
+                            "منطوق الآية": st.column_config.TextColumn(
+                                "منطوق الآية", width="large"
+                            ),
+                        },
+                    )
+                    # زر تصدير بيانات السورة مع الآيات إلى Excel
+                    excel_data_surah = convert_df_to_excel(final_surah_df)
+                    st.download_button(
+                        label=(
+                            f"📥 تصدير كلمات (سورة {selected_surah_drill}) مع"
+                            " الآيات إلى ملف Excel احترافي"
+                        ),
+                        data=excel_data_surah,
+                        file_name=(f"موضوعات_وآيات_سورة_{selected_surah_drill}.xlsx"),
+                        mime=(
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        ),
+                    )
+            else:
+                st.warning(
+                    "⚠️ لم يتم العثور على كلمات أو موضوعات مسجلة تطابق اسم السورة"
+                    " المُدخل."
+                )
         else:
-            surahs_list_ordered = sorted(df_dash["surah_name"].dropna().unique())
-
-        selected_surah_drill = st.selectbox(
-            "اختر اسم السورة لاستعراض الكلمات الموضوعية المحصورة داخلها (ترتيب المصحف"
-            " الشريف):",
-            surahs_list_ordered,
-            key="drill_down_surah",
-        )
-
-        if selected_surah_drill:
-            filtered_surah_df = (
-                df_dash[df_dash["surah_name"] == selected_surah_drill][
-                    ["topic_or_keyword", "group_id"]
-                ]
-                .drop_duplicates()
-                .reset_index(drop=True)
-            )
-            filtered_surah_df.columns = ["الكلمة الموضوعية المحصورة", "رقم المجموعة"]
-            st.success(
-                f"📖 الكلمات والموضوعات المحصورة المرتبطة بـ **(سورة {selected_surah_drill})**"
-                f" وعددها ({len(filtered_surah_df)} موضوع):"
-            )
-            st.dataframe(
-                filtered_surah_df,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "الكلمة الموضوعية المحصورة": st.column_config.TextColumn(
-                        "الكلمة الموضوعية المحصورة", width="medium"
-                    ),
-                    "رقم المجموعة": st.column_config.NumberColumn(
-                        "رقم المجموعة", width="small", format="%d"
-                    ),
-                },
-            )
-            # زر تصدير بيانات السورة إلى Excel
-            excel_data_surah = convert_df_to_excel(filtered_surah_df)
-            st.download_button(
-                label=(
-                    f"📥 تصدير كلمات (سورة {selected_surah_drill}) إلى ملف Excel احترافي"
-                ),
-                data=excel_data_surah,
-                file_name=f"موضوعات_سورة_{selected_surah_drill}.xlsx",
-                mime=(
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                ),
+            st.info(
+                "💡 اكتب في حقل البحث أعلاه اسم السورة (مثل: يونس، الأنفال، يوسف)"
+                " لاستعراض موضوعاتها وكلماتها المحصورة مع منطوق وأرقام الآيات"
+                " مباشرة."
             )
 
 else:
