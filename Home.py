@@ -79,7 +79,7 @@ with c2:
         unsafe_allow_html=True,
     )
     if st.button("انتقل إلى النظام التحليلي 👈", key="btn_search"):
-        st.switch_page("pages/2_🔍_النظام_التحليلي.py")
+        st.switch_page("pages/2_📊_النظام_التحليلي.py")
 
 with c3:
     st.markdown("#### 🔗 حصر التشابه والتناظر بين السور")
