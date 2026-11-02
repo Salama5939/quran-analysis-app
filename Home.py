@@ -99,7 +99,7 @@ with c4:
         unsafe_allow_html=True,
     )
     if st.button("انتقل إلى الربط الموضوعي 👈", key="btn_thematic"):
-        st.switch_page("pages/4_🌐_الربط_الموضوعي.py")
+        st.switch_page("pages/4_🌉_الربط_الموضوعي.py")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -123,7 +123,7 @@ with c6:
         unsafe_allow_html=True,
     )
     if st.button("انتقل إلى الآيات المحورية 👈", key="btn_recurring"):
-        st.switch_page("pages/6_🔁_الايات_المحورية.py")
+        st.switch_page("pages/6_🔁_الآيات_المحورية_المكررة.py")
 
 with c7:
     st.markdown("#### 🔎 البحث العام الشامل")
@@ -133,7 +133,7 @@ with c7:
         unsafe_allow_html=True,
     )
     if st.button("انتقل إلى البحث الشامل 👈", key="btn_global"):
-        st.switch_page("pages/7_🔎_البحث_الشامل.py")
+        st.switch_page("pages/7_🔍_البحث_العام_الشامل.py")
 
 with c8:
     st.markdown("#### 🗂️ أرشيف الحفظ والتدبر")
@@ -143,7 +143,7 @@ with c8:
         unsafe_allow_html=True,
     )
     if st.button("انتقل إلى أرشيف التدبر 👈", key="btn_archive"):
-        st.switch_page("pages/8_🗂️_ارشيف_التدبر.py")
+        st.switch_page("pages/8_🎯_أرشيف_الحفظ_والتدبر.py")
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("---")
