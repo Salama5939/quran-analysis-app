@@ -1,8 +1,9 @@
+import io
 import streamlit as st
 import pandas as pd
-from supabase import create_client
+from supabase import Client, create_client
 from theme import apply_custom_theme, add_home_button
-import io
+import os
 
 # إعدادات الصفحة التجريبية الموحدة
 st.set_page_config(
@@ -13,15 +14,27 @@ st.set_page_config(
 apply_custom_theme()
 
 
-# الاتصال بقاعدة بيانات Supabase
-@st.cache_resource
-def init_supabase():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+# ==========================================
+# 2. الاتصال الآمن بقاعدة بيانات Supabase
+# ==========================================
+url = os.environ.get("SUPABASE_URL")
+key = os.environ.get("SUPABASE_KEY")
 
+if not url:
+    try:
+        url = st.secrets.get("SUPABASE_URL", "")
+        key = st.secrets.get("SUPABASE_KEY", "")
+    except Exception:
+        pass
 
-supabase = init_supabase()
+if not url or not key:
+    st.error(
+        "❌ خطأ: لم يتم العثور على مفاتيح الاتصال بـ Supabase في متغيرات البيئة أو"
+        " الأسرار."
+    )
+    st.stop()
+
+supabase: Client = create_client(url, key)
 
 # زر العودة السريعة للرئيسية
 add_home_button()
