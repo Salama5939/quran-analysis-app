@@ -26,7 +26,7 @@ st.markdown(
 )
 st.markdown("<br>", unsafe_allow_html=True)
 
-# إضافة زر تحميل دليل المُتدبّر على الجانب الأيسر (أو في المنتصف العلوي تحت العنوان الرئيسي)
+# إضافة زر تحميل دليل المُتدبّر
 col_space, col_dl_btn, col_right_space = st.columns([1.5, 2, 1.5])
 with col_dl_btn:
     pdf_filename = "دليل_المتدبر_للقرآن_الكريم.pdf"
@@ -58,9 +58,10 @@ st.markdown(
 )
 st.markdown("<br>", unsafe_allow_html=True)
 
-# تصميم بوابات الانتقال التفاعلية الثمانية في صفوف متناسقة
-c1, c2, c3, c4 = st.columns(4)
-with c1:
+# تصميم بوابات الانتقال التسع بنظام 3 أعمدة (3 صفوف × 3 أعمدة)
+# الصف الأول (1, 2, 3)
+r1_c1, r1_c2, r1_c3 = st.columns(3)
+with r1_c1:
     st.markdown("#### 📖 المصحف المصور")
     st.markdown(
         "<p style='font-size: 13px; color: #95A5A6;'>استعراض صفحات المصحف"
@@ -71,18 +72,18 @@ with c1:
     if st.button("انتقل إلى المصحف المصور 👈", key="btn_quran"):
         st.switch_page("pages/1_📖_المصحف_المصور.py")
 
-with c2:
-    st.markdown("#### 🔍 نظام البحث الذكي بالكلمة أو المقطع")
+with r1_c2:
+    st.markdown("#### 🔍 النظام التحليلي الذكي")
     st.markdown(
-        "<p style='font-size: 13px; color: #95A5A6;'>البحث الفوري في المصحف"
-        " المعتقد، استقراء المجموعات، ومقاصد السور والتقارير.</p>",
+        "<p style='font-size: 13px; color: #95A5A6;'>البحث الفوري في المصحف،"
+        " استقراء المجموعات، ومقاصد السور والتقارير.</p>",
         unsafe_allow_html=True,
     )
     if st.button("انتقل إلى النظام التحليلي 👈", key="btn_search"):
         st.switch_page("pages/2_📊_النظام_التحليلي.py")
 
-with c3:
-    st.markdown("#### 🔗 حصر التشابه والتناظر بين السور")
+with r1_c3:
+    st.markdown("#### 🔗 حصر التشابه والتناظر")
     st.markdown(
         "<p style='font-size: 13px; color: #95A5A6;'>استعراض وجوه التشابه"
         " والتناظر الموضوعي بين السور القرآنية الكريمة.</p>",
@@ -91,7 +92,11 @@ with c3:
     if st.button("انتقل إلى التناظر والموضوعات 👈", key="btn_similarity"):
         st.switch_page("pages/3_🔗_التناظر_والموضوعات.py")
 
-with c4:
+st.markdown("<br>", unsafe_allow_html=True)
+
+# الصف الثاني (4, 5, 6)
+r2_c1, r2_c2, r2_c3 = st.columns(3)
+with r2_c1:
     st.markdown("#### 🌐 الربط الموضوعي")
     st.markdown(
         "<p style='font-size: 13px; color: #95A5A6;'>محرك الربط الموضوعي والمقاصدي"
@@ -101,21 +106,17 @@ with c4:
     if st.button("انتقل إلى الربط الموضوعي 👈", key="btn_thematic"):
         st.switch_page("pages/4_🌉_الربط_الموضوعي.py")
 
-st.markdown("<br>", unsafe_allow_html=True)
-
-c5, c6, c7, c8 = st.columns(4)
-with c5:
+with r2_c2:
     st.markdown("#### 📈 الخريطة الإحصائية")
     st.markdown(
         "<p style='font-size: 13px; color: #95A5A6;'>لوحة المؤشرات التحليلية"
-        " والرسوم البيانية التفاعلية لتوزيع الكلمات والمجموعات والموضوعات"
-        " المحصورة.</p>",
+        " والرسوم البيانية التفاعلية لتوزيع الكلمات والمجموعات والموضوعات.</p>",
         unsafe_allow_html=True,
     )
     if st.button("انتقل إلى الخريطة الإحصائية 👈", key="btn_stats"):
         st.switch_page("pages/5_📈_الخريطة_الإحصائية.py")
 
-with c6:
+with r2_c3:
     st.markdown("#### 🔁 الآيات المحورية المكررة")
     st.markdown(
         "<p style='font-size: 13px; color: #95A5A6;'>التحليل الفكري للآيات التي"
@@ -125,7 +126,11 @@ with c6:
     if st.button("انتقل إلى الآيات المحورية 👈", key="btn_recurring"):
         st.switch_page("pages/6_🔁_الآيات_المحورية_المكررة.py")
 
-with c7:
+st.markdown("<br>", unsafe_allow_html=True)
+
+# الصف الثالث (7, 8, 9)
+r3_c1, r3_c2, r3_c3 = st.columns(3)
+with r3_c1:
     st.markdown("#### 🔎 البحث العام الشامل")
     st.markdown(
         "<p style='font-size: 13px; color: #95A5A6;'>محرك البحث الشامل عبر كافة"
@@ -135,7 +140,7 @@ with c7:
     if st.button("انتقل إلى البحث الشامل 👈", key="btn_global"):
         st.switch_page("pages/7_🔍_البحث_العام_الشامل.py")
 
-with c8:
+with r3_c2:
     st.markdown("#### 🗂️ أرشيف الحفظ والتدبر")
     st.markdown(
         "<p style='font-size: 13px; color: #95A5A6;'>لوحة متابعة وإدارة رحلتك"
@@ -145,11 +150,21 @@ with c8:
     if st.button("انتقل إلى أرشيف التدبر 👈", key="btn_archive"):
         st.switch_page("pages/8_🎯_أرشيف_الحفظ_والتدبر.py")
 
+with r3_c3:
+    st.markdown("#### 📊 الآيات المشتركة والموضوعات")
+    st.markdown(
+        "<p style='font-size: 13px; color: #95A5A6;'>استكشاف الآيات ذات الموضوعات"
+        " المتعددة، لوحة المؤشرات التفاعلية، والتقارير.</p>",
+        unsafe_allow_html=True,
+    )
+    if st.button("انتقل إلى الآيات المشتركة 👈", key="btn_shared_topics"):
+        st.switch_page("pages/9_📊_الآيات_المشتركة_والموضوعات.py")
+
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("---")
 st.markdown(
     "<p style='text-align: center; color: #F39C12; font-size: 12px;'>💡 لإرشادات"
-    " الاستخدام، يمكنك أيضاً الانتقال من الإشراف في أي وقت عبر القائمة الجانبية"
+    " الاستخدام، يمكنك أيضاً الانتقال في أي وقت عبر القائمة الجانبية"
     " (Sidebar) الظاهرة على اليسار.</p>",
     unsafe_allow_html=True,
 )

@@ -1,10 +1,11 @@
 import streamlit as st
 
+
 def apply_custom_theme():
     """دالة مركزية لتطبيق التصميم الفاتح الموحد، الخطوط الفاخرة، وتنسيق القائمة
 
     الجانبية، وإخفاء شريط النشر العلوي (Deploy) والشريط الجانبي بالكامل،
-    وإتاحة التمرير لجميع القوائم المنسدلة في كافة صفحات التطبيق.
+    وإتاحة التمرير لجميع القوائم المنسدلة، واحترام التنسيقات المخصصة للصفحات (مثل التوسيط).
     """
     st.markdown(
         """
@@ -56,6 +57,12 @@ def apply_custom_theme():
                 text-align: right;
             }
             
+            /* ضبط الاتجاه الافتراضي للنصوص العامة لليمين دون إلغاء التنسيقات المخصصة في الصفحات */
+            p:not([style*="text-align"]), span:not([style*="text-align"]) {
+                direction: rtl !important;
+                text-align: right !important;
+            }
+
             /* محاذاة النصوص داخل خانات الإدخال وقوائم الاختيار */
             .stTextInput input, .stSelectbox div[data-baseweb="select"], .stTextArea textarea {
                 text-align: right;
