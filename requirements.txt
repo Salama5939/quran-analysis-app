@@ -4,3 +4,4 @@ psycopg2-binary
 pandas
 openpyxl
 plotly
+XlsxWriter==3.1.9
