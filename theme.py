@@ -5,7 +5,8 @@ def apply_custom_theme():
     """دالة مركزية لتطبيق التصميم الفاتح الموحد، الخطوط الفاخرة، وتنسيق القائمة
 
     الجانبية، وإخفاء شريط النشر العلوي (Deploy) والشريط الجانبي بالكامل،
-    وإتاحة التمرير لجميع القوائم المنسدلة، واحترام التنسيقات المخصصة للصفحات (مثل التوسيط).
+    وإتاحة التمرير لجميع القوائم المنسدلة، واحترام التنسيقات المخصصة للصفحات،
+    بالإضافة إلى المعالجة الجذرية لتنسيق الجداول ومنع اختفاء الأعمدة.
     """
     st.markdown(
         """
@@ -86,17 +87,27 @@ def apply_custom_theme():
                 text-align: right;
             }
 
-            /* تنسيق وتكبير الخطوط واتجاه كافة الجداول مركزياً */
+            /* -------------------------------------------------------------
+               تنسيق الجداول ومعالجة مشكلة عرض الأعمدة واختفاء الحقل الأخير (RTL)
+               ------------------------------------------------------------- */
             [data-testid="stDataFrame"], .stTable {
                 direction: rtl !important;
                 text-align: right !important;
+                width: 100% !important;
             }
+            
+            [data-testid="stDataFrame"] div[data-testid="stHorizontalBlock"] {
+                direction: rtl !important;
+            }
+
+            /* تنسيق خلايا الجداول لخط واضح واتجاه سليم لمنع انكماش المحتوى */
             [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th, 
             .stTable td, .stTable th {
                 direction: rtl !important;
                 text-align: right !important;
                 font-family: 'Amiri', serif !important;
                 font-size: 18px !important;
+                white-space: normal !important; /* السماح بالتفاف النص وعدم اختفائه */
             }
         </style>
     """,

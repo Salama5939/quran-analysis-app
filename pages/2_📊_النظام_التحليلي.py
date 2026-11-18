@@ -1,80 +1,36 @@
 import os
-import re
 import pandas as pd
 import streamlit as st
-from supabase import Client, create_client
 import theme  # استدعاء ملف التنسيق المركزي
+from database import (
+    supabase,
+    search_ayah_group_relations_stable,
+    search_full_quran_stable,
+    get_or_create_word_code,
+    normalize_arabic,
+)
 
-# ==========================================
-# 1. إعدادات الصفحة وتصميم الجداول الواسعة
-# ==========================================
+# 1. إعدادات الصفحة
 st.set_page_config(
-    page_title="النظام التحليلي للتدبر القرآني (الإصدار النهائي المتقن)",
-    page_icon="📖",
+    page_title="النظام التحليلي للتدبر القرآني والبحث",
+    page_icon="📊",
     layout="wide",
 )
 
-# تطبيق التنسيق المركزي
+# تطبيق التنسيق المركزي وزر الرئيسية
 theme.apply_custom_theme()
-
-# إضافة زر العودة السريع للرئيسية
 theme.add_home_button()
 
-
-# تنسيق إضافي لراحة العرض وتكبير خطوط الجداول
 st.markdown(
-    """
-    <style>
-        
-        .quran-ayah {
-            font-size: 18px;
-            color: #F1C40F;
-            font-family: 'Amiri', serif;
-        }
-        [data-testid="stDataFrame"] {
-            direction: rtl;
-            text-align: right;
-        }
-        [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
-            direction: rtl !important;
-            text-align: right !important;
-            font-family: 'Amiri', serif !important;
-            font-size: 16px !important;
-        }
-    </style>
-""",
+    "<h1 style='text-align: center; color: #F1C40F;'>📊 النظام التحليلي والبحث الموضوعي</h1>",
     unsafe_allow_html=True,
 )
-
-# ==========================================
-# 2. الاتصال الآمن بقاعدة بيانات Supabase
-# ==========================================
-url = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_KEY")
-
-if not url:
-    try:
-        url = st.secrets.get("SUPABASE_URL", "")
-        key = st.secrets.get("SUPABASE_KEY", "")
-    except Exception:
-        pass
-
-if not url or not key:
-    st.error(
-        "❌ خطأ: لم يتم العثور على مفاتيح الاتصال بـ Supabase في متغيرات البيئة أو"
-        " الأسرار."
-    )
-    st.stop()
-
-supabase: Client = create_client(url, key)
+st.markdown("---")
 
 
-# ==========================================
-# 3. الدوال المساعدة وقراءة ملفات الربط
-# ==========================================
+# دالة قراءة ملف تقسيم السور محلياً
 @st.cache_data
 def load_surah_mapping_details():
-    """قراءة ملف تقسيم السور لجلب المجموعة، النصف، والربع بدقة"""
     mapping_file = "تقسيم سور القرآن حسب الجزء و الربع و المجموعة.xlsx"
     surah_details = {}
     if os.path.exists(mapping_file):
@@ -91,68 +47,7 @@ def load_surah_mapping_details():
 
 surah_mapping_db = load_surah_mapping_details()
 
-
-def get_or_create_word_code(keyword):
-    """التحقق هل الكلمة مسجلة مسبقاً لجلب الـ word_code الخاص بها، أو إنشاء جديد"""
-    try:
-        res = (
-            supabase.table("ayah_group_relations")
-            .select("word_code")
-            .eq("topic_or_keyword", keyword)
-            .limit(1)
-            .execute()
-        )
-        data = res.data
-        if data and len(data) > 0 and data[0].get("word_code"):
-            return int(data[0].get("word_code"))
-
-        res_max = (
-            supabase.table("ayah_group_relations")
-            .select("word_code")
-            .order("word_code", desc=True)
-            .limit(1)
-            .execute()
-        )
-        max_data = res_max.data
-        if max_data and len(max_data) > 0:
-            max_code = max_data[0].get("word_code", 0)
-            return int(max_code) + 1
-    except Exception:
-        pass
-    return 1
-
-
-def normalize_arabic(text):
-    """توحيد شامل للهمزات والياءات وإزالة التشكيل والعلامات القرآنية"""
-    if not text:
-        return ""
-    text = re.sub(r"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640]", "", text)
-    text = re.sub(r"[إأآٱ]", "ا", text)
-    text = re.sub(r"[ىي]", "ي", text)
-    return text.strip()
-
-
-def is_exact_word_match(query, plain_txt, uthmani_txt):
-    """التحقق من الكلمة المستقلة أو العبارة المتصلة"""
-    norm_query = normalize_arabic(query)
-    norm_plain = normalize_arabic(plain_txt)
-    norm_uthmani = normalize_arabic(uthmani_txt)
-
-    if " " in norm_query:
-        return (norm_query in norm_plain) or (norm_query in norm_uthmani)
-    else:
-        words_plain = re.findall(r"[\u0600-\u06FF]+", norm_plain)
-        words_uthmani = re.findall(r"[\u0600-\u06FF]+", norm_uthmani)
-        return (norm_query in words_plain) or (norm_query in words_uthmani)
-
-
-# ==========================================
-# 4. واجهة النظام التحليلي
-# ==========================================
-st.markdown("<h1>📊 النظام التحليلي والبحث الموضوعي</h1>", unsafe_allow_html=True)
-
-st.markdown("---")
-
+# التبويبات الأربعة الكاملة
 tab1, tab2, tab3, tab4 = st.tabs(
     [
         "🔍 البحث والتدبر الذكي",
@@ -163,12 +58,11 @@ tab1, tab2, tab3, tab4 = st.tabs(
 )
 
 # ==========================================
-# التبويب الأول: البحث والتدبر الذكي (محدث لجلب المقصد ديناميكياً)
+# التبويب الأول: البحث والتدبر الذكي والترحيل
 # ==========================================
 with tab1:
     st.subheader(
-        "البحث الفوري المتكامل في الحصر المعتمد والمصحف الشامل (بالاستعلام المباشر"
-        " والذكي)"
+        "البحث الفوري المتكامل في الحصر المعتمد والمصحف الشامل (بالاستعلام المباشر والذكي)"
     )
 
     if st.session_state.get("clear_screen_flag_master", False):
@@ -178,7 +72,7 @@ with tab1:
         st.session_state.clear_screen_flag_master = False
 
     search_query = st.text_input(
-        "أدخل الكلمة أو العبارة بدقة (مثل: استوى، استوى على، المجيد، الغفار):",
+        "أدخل الكلمة أو العبارة بدقة (مثل: استوى، المتعال، المجيد):",
         placeholder="اكتب هنا...",
         key="search_input_table_master",
     )
@@ -188,42 +82,19 @@ with tab1:
     if "searched_word_master" not in st.session_state:
         st.session_state.searched_word_master = ""
 
-    col_s1, col_s2 = st.columns([1, 5])
+    col_s1, _ = st.columns([1, 5])
     with col_s1:
-        search_button = st.button("🔍 بحث شامل", key="btn_t1_search_master")
+        search_button = st.button(
+            "🔍 بحث شامل", key="btn_t1_search_master", type="primary"
+        )
 
     if search_button and search_query:
         with st.spinner("جاري البحث اللغوي المباشر وتحليل النتائج..."):
             raw_query = search_query.strip()
             st.session_state.searched_word_master = raw_query
-            norm_target = normalize_arabic(raw_query)
 
-            resp_hsor = (
-                supabase.table("ayah_group_relations")
-                .select("*")
-                .eq("topic_or_keyword", raw_query)
-                .execute()
-            )
-            hsor_results = resp_hsor.data if resp_hsor.data else []
-
-            if not hsor_results:
-                resp_all = (
-                    supabase.table("ayah_group_relations")
-                    .select("*")
-                    .range(0, 9999)
-                    .execute()
-                )
-                all_hsor = resp_all.data if resp_all.data else []
-                for r in all_hsor:
-                    w = str(r.get("topic_or_keyword", "")).strip()
-                    norm_w = normalize_arabic(w)
-                    if " " in raw_query:
-                        if norm_target in norm_w:
-                            hsor_results.append(r)
-                    else:
-                        words_in_w = re.findall(r"[\u0600-\u06FF]+", norm_w)
-                        if norm_target in words_in_w or norm_target == norm_w:
-                            hsor_results.append(r)
+            # استخدام الدوال المستقرة من المكتبة المركزية
+            hsor_results = search_ayah_group_relations_stable(raw_query)
 
             for item in hsor_results:
                 s_name = str(item.get("surah_name", "")).strip()
@@ -238,47 +109,7 @@ with tab1:
                 ),
             )
 
-            if " " in raw_query:
-                quran_res = (
-                    supabase.table("full_quran")
-                    .select("*")
-                    .ilike("plain_ayah_text", f"%{raw_query}%")
-                    .execute()
-                )
-            else:
-                variants = {raw_query, norm_target}
-                if norm_target.endswith("ت"):
-                    variants.add(norm_target[:-1] + "ة")
-                elif norm_target.endswith("ة"):
-                    variants.add(norm_target[:-1] + "ت")
-
-                or_conditions = [f"plain_ayah_text.ilike.%{v}%" for v in variants if v]
-                quran_res = (
-                    supabase.table("full_quran")
-                    .select("*")
-                    .or_(",".join(or_conditions))
-                    .execute()
-                )
-
-            raw_quran_data = quran_res.data if quran_res.data else []
-
-            quran_results = []
-            for q in raw_quran_data:
-                plain_txt = q.get("plain_ayah_text", "")
-                uthmani_txt = q.get("ayah_text", "")
-                if " " in raw_query:
-                    if raw_query in plain_txt or norm_target in normalize_arabic(
-                        plain_txt
-                    ):
-                        quran_results.append(q)
-                else:
-                    if is_exact_word_match(raw_query, plain_txt, uthmani_txt):
-                        quran_results.append(q)
-
-            quran_results = sorted(
-                quran_results,
-                key=lambda x: (x.get("surah_number", 0), x.get("ayah_number", 0)),
-            )
+            quran_results = search_full_quran_stable(raw_query)
 
             st.session_state.search_results_master = {
                 "hsor": hsor_results,
@@ -292,8 +123,7 @@ with tab1:
     if current_word:
         if res_hsor:
             st.success(
-                f"✅ تم العثور على {len(res_hsor)} نتيجة مطابقة في **حصرك المعتمد**"
-                f" لـ: '{current_word}'"
+                f"✅ تم العثور على {len(res_hsor)} نتيجة مطابقة في **حصرك المعتمد** لـ: '{current_word}'"
             )
             table_data_hsor = []
             for idx, row in enumerate(res_hsor, 1):
@@ -312,7 +142,7 @@ with tab1:
             df_hsor_view = pd.DataFrame(table_data_hsor)
             st.dataframe(
                 df_hsor_view,
-                width="stretch",
+                width= "stretch",
                 hide_index=True,
                 column_config={
                     "منطوق الآية": st.column_config.TextColumn(
@@ -336,20 +166,16 @@ with tab1:
             count_quran = len(res_quran)
 
             st.markdown(
-                f"### 🌍 نتائج المصحف الشامل لـ: '{current_word}' (إجمالي الآيات في"
-                f" القرآن: {count_quran})"
+                f"### 🌍 نتائج المصحف الشامل لـ: '{current_word}' (إجمالي الآيات في القرآن: {count_quran})"
             )
 
             if count_hsor >= count_quran:
                 st.success(
-                    "🎉 **ممتاز!** النتائج المخزنة في حصرك المعتمد مطابقة أو تغطي بالكامل"
-                    " النتائج الموجودة في القرآن لهذه الكلمة."
+                    "🎉 **ممتاز!** النتائج المخزنة في حصرك المعتمد مطابقة أو تغطي بالكامل النتائج الموجودة في القرآن لهذه الكلمة."
                 )
             else:
                 st.warning(
-                    f"⚠️ العدد المخزن في الحصر ({count_hsor}) أقل من إجمالي الوجوه في"
-                    f" القرآن ({count_quran}). يمكنك مراجعة الجدول أدناه واختيار الآيات"
-                    " المراد ترحيلها."
+                    f"⚠️ العدد المخزن في الحصر ({count_hsor}) أقل من إجمالي الوجوه في القرآن ({count_quran}). يمكنك مراجعة الجدول أدناه واختيار الآيات المراد ترحيلها."
                 )
 
             existing_ayahs = set()
@@ -387,7 +213,7 @@ with tab1:
 
             edited_df = st.data_editor(
                 df_quran_view,
-                width="stretch",
+                width= "stretch",
                 hide_index=True,
                 column_config={
                     "اختيار للترحيل": st.column_config.CheckboxColumn(
@@ -409,7 +235,6 @@ with tab1:
 
                 target_word_code = get_or_create_word_code(current_word)
 
-                # جلب مقاصد السور مباشرة من قاعدة البيانات لضمان الاعتماد الكلي على DB
                 surah_objs_res = (
                     supabase.table("surah_objectives")
                     .select("surah_number, surah_objective")
@@ -422,7 +247,7 @@ with tab1:
                             "surah_objective"
                         ]
 
-                for index, row in edited_df.iterrows():
+                for _, row in edited_df.iterrows():
                     if row["اختيار للترحيل"] == True:
                         s_name = row["إسم السورة"]
                         s_num = int(row["رقم السورة"])
@@ -439,7 +264,6 @@ with tab1:
                         half_c = surah_info.get("half_code", 0)
                         quarter_c = surah_info.get("quarter_code", 0)
 
-                        # جلب مقصد السورة الفعلي من قاعدة البيانات (جدول surah_objectives)
                         dynamic_note = surah_objectives_map.get(
                             s_num, "مقصد السورة غير محدد"
                         )
@@ -452,7 +276,7 @@ with tab1:
                             "surah_name": s_name,
                             "ayah_number": a_num,
                             "ayah_text": a_text,
-                            "notes": dynamic_note,  # <-- تم استبدال النص الثابت بالمقصد الفعلي المستخرج من قاعدة البيانات
+                            "notes": dynamic_note,
                             "half_code": half_c,
                             "quarter_code": quarter_c,
                             "frequency_count": 1,
@@ -468,22 +292,17 @@ with tab1:
 
                 if migrated_count > 0:
                     st.success(
-                        f"🎉 تم بنجاح ترحيل وإضافة ({migrated_count}) آية برقم مسلسل موحد"
-                        f" (word_code = {target_word_code}) مع جلب مقصدها الحقيقي من قاعدة"
-                        " البيانات!"
+                        f"🎉 تم بنجاح ترحيل وإضافة ({migrated_count}) آية برقم مسلسل موحد (word_code = {target_word_code}) مع جلب مقصدها الحقيقي من قاعدة البيانات!"
                     )
 
                 if duplicate_attempt_count > 0:
                     st.warning(
-                        f"⚠️ تنبيه ذكي: تم استثناء وتجاهل ({duplicate_attempt_count}) آية"
-                        " لاختيارك ترحيلها بينما هي مسجلة مسبقاً في حصرك المعتمد وهي:"
-                        f" {', '.join(duplicate_details)}"
+                        f"⚠️ تنبيه ذكي: تم استثناء وتجاهل ({duplicate_attempt_count}) آية لاختيارك ترحيلها بينما هي مسجلة مسبقاً في حصرك المعتمد وهي: {', '.join(duplicate_details)}"
                     )
 
                 if migrated_count == 0 and duplicate_attempt_count == 0:
                     st.warning(
-                        "⚠️ لم تقم بتحديد أي آية للترحيل. يرجى اختيار آية واحدة على الأقل"
-                        " عبر خانة الاختيار."
+                        "⚠️ لم تقم بتحديد أي آية للترحيل. يرجى اختيار آية واحدة على الأقل عبر خانة الاختيار."
                     )
                 else:
                     st.markdown("---")
@@ -499,20 +318,17 @@ with tab1:
                 f"❌ لم يتم العثور على أي نتائج في المصحف الشامل لـ: '{current_word}'."
             )
 
-# داخل الملف الرئيسي للبرنامج (2_📊_النظام_التحليلي.py) وتحديداً في التبويب الثاني:
-
+# ==========================================
+# التبويب الثاني: البحث التحليلي والموضوعي
+# ==========================================
 with tab2:
-    st.subheader(
-        "البحث المتقدم في الكلمات المحصورة والمقاصد والمجموعات الثمانية (مرتبة حسب"
-        " المجموعة والسورة والآية)"
-    )
+    st.subheader("البحث المتقدم في الكلمات المحصورة والمقاصد والمجموعات الثمانية")
 
-    # واجهة البحث (حقل إدخال الكلمة في اليمين، والمجموعة في اليسار)
     col_input, col_group = st.columns([3, 2])
     with col_input:
         search_input = st.text_input(
             "أدخل الكلمة أو الموضوع للبحث في التحليلات:",
-            placeholder="مثال: الحمد، فسيروا...",
+            placeholder="مثال: الحمد، المتعال...",
             key="analysis_search_main",
         )
     with col_group:
@@ -534,14 +350,12 @@ with tab2:
 
     if st.button("🔍 بحث تحليلي سريع", key="btn_t2_search_main", type="primary"):
         with st.spinner("جاري جلب البيانات مباشرة عبر دالة SQL في Supabase..."):
-
             g_val = None
             if group_choice != "الكل":
                 g_val = int(group_choice.replace("المجموعة ", ""))
 
             q_val = search_input.strip() if search_input else None
 
-            # استدعاء دالة الـ SQL المخزنة باستخدام rpc
             response = supabase.rpc(
                 "search_ayah_relations", {"search_query": q_val, "filter_group": g_val}
             ).execute()
@@ -550,15 +364,10 @@ with tab2:
 
             if data:
                 st.success(f"✅ تم العثور على ({len(data)}) سجل تحليلي مطابق.")
-
-                # رسالة إرشادية للمستخدم لتوضيح خاصية التوسعة والنقر المزدوج للحقول النصية الطويلة
                 st.info(
-                    "💡 **تلميح للاستخدام:** يمكنك النقر المزدوج (Double Click) على أي"
-                    " خلايا نصية طويلة مثل (منطوق الآية) أو (المقصد / ملاحظات) لتوسعتها وعرضها"
-                    " بالكامل لراحة التدبر والقراءة."
+                    "💡 **تلميح للاستخدام:** يمكنك النقر المزدوج (Double Click) على أي خلايا نصية طويلة لتوسعتها."
                 )
 
-                # تجهيز الجدول مع ترتيب الأعمدة
                 table_rows = []
                 for idx, row in enumerate(data, 1):
                     table_rows.append(
@@ -575,11 +384,9 @@ with tab2:
                     )
 
                 df_main_t2 = pd.DataFrame(table_rows)
-
-                # عرض الجدول مع تخصيص العروض وتصغير المساحات الرقمية
                 st.dataframe(
                     df_main_t2,
-                    width="stretch",
+                    width= "stretch",
                     hide_index=True,
                     column_config={
                         "مسلسل": st.column_config.NumberColumn(
@@ -601,28 +408,21 @@ with tab2:
                             "رقم الآية", width="small", format="%d"
                         ),
                         "منطوق الآية": st.column_config.TextColumn(
-                            "منطوق الآية",
-                            width="large",
-                            help="انقر مرتين لتوسعة وعرض الآية بالكامل",
+                            "منطوق الآية", width="large"
                         ),
                         "المقصد / ملاحظات": st.column_config.TextColumn(
-                            "المقصد / ملاحظات",
-                            width="large",
-                            help="انقر مرتين لتوسعة وعرض النص بالكامل",
+                            "المقصد / ملاحظات", width="large"
                         ),
                     },
                 )
             else:
                 st.warning("❌ لم يتم العثور على نتائج تحليلية مطابقة لشروط البحث.")
 
+# ==========================================
 # التبويب الثالث: استعراض السور والمقاصد
+# ==========================================
 with tab3:
     st.subheader("📖 الجدول الشامل لمقاصد السور وربطها بالمجموعات الثمانية")
-    st.markdown(
-        "<p style='color: #BDC3C7;'>استعرض خريطة السور القرآنية الـ 114 مرتبطةً"
-        " بمقاصدها وتصنيفها ضمن المجموعات الثمانية، مع إمكانية الفلترة السريعة.</p>",
-        unsafe_allow_html=True,
-    )
 
     col_t3_1, col_t3_2 = st.columns([2, 2])
     with col_t3_1:
@@ -645,7 +445,7 @@ with tab3:
     with col_t3_2:
         search_surah_name = st.text_input(
             "بحث سريع عن سورة:",
-            placeholder="اكتب اسم السورة (مثل: البقرة، يوسف)...",
+            placeholder="اكتب اسم السورة...",
             key="t3_surah_search",
         )
 
@@ -663,9 +463,7 @@ with tab3:
 
     if surah_objs_data:
         st.success(f"✅ تم العثور على {len(surah_objs_data)} سورة مطابقة.")
-
-        df_surahs_view = pd.DataFrame(surah_objs_data)
-        df_surahs_view = df_surahs_view[
+        df_surahs_view = pd.DataFrame(surah_objs_data)[
             ["surah_number", "surah_name", "group_id", "surah_objective"]
         ]
         df_surahs_view.columns = [
@@ -677,7 +475,7 @@ with tab3:
 
         st.dataframe(
             df_surahs_view,
-            width="stretch",
+            width= "stretch",
             hide_index=True,
             column_config={
                 "مسلسل": st.column_config.NumberColumn(
@@ -695,14 +493,11 @@ with tab3:
     else:
         st.warning("❌ لم يتم العثور على سور مطابقة لشروط البحث أو الفلترة.")
 
-# التبويب الرابع: تقرير الكلمات المحصورة (مع شمل كافة السجلات وخانة البحث السريع)
+# ==========================================
+# التبويب الرابع: تقرير الكلمات المحصورة
+# ==========================================
 with tab4:
     st.subheader("📈 التقرير التحليلي للكلمات المحصورة (حسب المجموعة والترتيب الأبجدي)")
-    st.markdown(
-        "<p style='color: #BDC3C7;'>قم بتصفية الكلمات حسب المجموعة المطلوبة أولاً،"
-        " لترى الكلمات مرتبة أبجدياً مع إجمالي الآيات والتكرارات.</p>",
-        unsafe_allow_html=True,
-    )
 
     col_rep1, col_rep2 = st.columns([2, 2])
     with col_rep1:
@@ -739,13 +534,11 @@ with tab4:
                 g_num = int(selected_group_filter.replace("المجموعة ", ""))
                 query = query.eq("group_id", g_num)
 
-            # استخدام range عريض لتغطية كافة السجلات بلا استثناء (تجاوز حد الـ 1000 و 5000)
             rep_res = query.range(0, 99999).execute()
             rep_data = rep_res.data
 
             if rep_data:
                 df_rep = pd.DataFrame(rep_data)
-
                 df_rep["group_id"] = pd.to_numeric(
                     df_rep["group_id"], errors="coerce"
                 ).fillna(1)
@@ -770,11 +563,10 @@ with tab4:
                     by="topic_or_keyword", ascending=True
                 )
 
-                # إضافة ميزة البحث السريع عن أي كلمة في التقرير (مثل: الحمد)
                 st.markdown("---")
                 word_search_filter = st.text_input(
                     "🔍 بحث سريع عن كلمة محصورة في التقرير:",
-                    placeholder="اكتب الكلمة للبحث عنها فوراً في التقرير (مثل: الحمد)...",
+                    placeholder="اكتب الكلمة...",
                     key="rep_word_search",
                 )
 
@@ -786,13 +578,9 @@ with tab4:
                         )
                     ]
 
-                total_unique_words = len(df_grouped)
-
                 st.success(
-                    f"✅ إجمالي عدد الكلمات الفريدة الناتجة في ({selected_group_filter}):"
-                    f" **{total_unique_words} كلمة** (تم فحص كافة السجلات بنجاح)"
+                    f"✅ إجمالي عدد الكلمات الفريدة الناتجة في ({selected_group_filter}): **{len(df_grouped)} كلمة**"
                 )
-
                 st.dataframe(
                     df_grouped.rename(
                         columns={
@@ -800,7 +588,7 @@ with tab4:
                             "المجموعات_المرتبطة": "رقم المجموعة (المجموعات)",
                         }
                     ),
-                    width="stretch",
+                    width= "stretch",
                     hide_index=True,
                 )
             else:
@@ -809,6 +597,5 @@ with tab4:
                 )
     else:
         st.info(
-            "💡 اختر المجموعة من القائمة واضغط على زر **عرض وتحديث التقرير المنظم**"
-            " لبدء الاستعراض الشامل."
+            "💡 اختر المجموعة من القائمة واضغط على زر **عرض وتحديث التقرير المنظم** لبدء الاستعراض الشامل."
         )

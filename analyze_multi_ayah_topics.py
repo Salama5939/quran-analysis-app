@@ -1,94 +1,108 @@
 import streamlit as st
 import pandas as pd
-from supabase import create_client
-from theme import apply_custom_theme, add_home_button
 import io
 
-# 1. إعدادات الصفحة
+# 1. إعدادات الصفحة والهوية
 st.set_page_config(
     page_title="محلل ومستكشف الآيات المشتركة", page_icon="📊", layout="wide"
 )
 
-# تطبيق الهوية البصرية الموحدة واتجاه RTL
-apply_custom_theme()
-add_home_button()
+# تطبيق التنسيق المركزي وزر الرئيسية
+import theme
+
+theme.apply_custom_theme()
+theme.add_home_button()
 
 st.title("📊 محلل ومستكشف الآيات المشتركة والموضوعات المتعددة")
 st.markdown(
-    "<p style='text-align: center; color: #666666;'>استكشاف وتحليل الآيات التي تحوي أكثر من موضوع أو كلمة حصر، مع لوحة مؤشرات تفاعلية وترتيب مصحفي دقيق وربط بالمقاصد وأرقام الصفحات.</p>",
+    "<p style='text-align: center; color: #666666;'>استكشاف وتحليل الآيات التي تحوي أكثر من موضوع أو كلمة حصر عبر العرض السحابي المعتمد (v_ayah_relations_with_pages)، مع لوحة مؤشرات تفاعلية وترتيب مصحفي دقيق وربط بالمقاصد.</p>",
     unsafe_allow_html=True,
 )
 st.markdown("---")
 
-
-# 2. الاتصال بقاعدة بيانات Supabase
-@st.cache_resource
-def init_supabase():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+# 2. جلب البيانات حصرياً من العرض السحابي (v_ayah_relations_with_pages)
+from database import supabase
 
 
-supabase = init_supabase()
-
-
-# جلب البيانات من الـ View الجديد (v_ayah_relations_with_pages)
 @st.cache_data(ttl=60)
-def fetch_ayah_relations():
+def fetch_ayah_relations_from_view():
     try:
         response = supabase.table("v_ayah_relations_with_pages").select("*").execute()
-        return pd.DataFrame(response.data)
+        return pd.DataFrame(response.data) if response.data else pd.DataFrame()
     except Exception as e:
+        st.error(f"❌ حدث خطأ أثناء جلب البيانات من العرض السحابي: {e}")
         return pd.DataFrame()
 
 
-df_all = fetch_ayah_relations()
+df_all = fetch_ayah_relations_from_view()
 
 if df_all.empty:
     st.error(
-        "❌ لا توجد بيانات متاحة في العرض (v_ayah_relations_with_pages). تأكد من إنشاء الـ SQL View في Supabase."
+        "❌ لا توجد بيانات متاحة في العرض (v_ayah_relations_with_pages). تأكد من وجود البيانات أو تفعيل الـ View في Supabase."
     )
 else:
-    # -------------------------------------------------------------
-    # تجهيز وتجميع البيانات الأساسية مع الحفاظ على الترتيب المصحفي (surah_serial)
-    # -------------------------------------------------------------
-    agg_df = (
-        df_all.groupby(
-            ["surah_serial", "surah_name", "ayah_number", "ayah_text", "page_number"]
-        )
-        .agg(
-            topics_count=("topic_or_keyword", "count"),
-            topics_list=(
-                "topic_or_keyword",
-                lambda x: "، ".join(str(v) for v in x.unique()),
-            ),
-            groups_list=("group_id", lambda x: "، ".join(str(v) for v in x.unique())),
-            notes_list=(
-                "notes",
-                lambda x: " | ".join(str(v) for v in x.dropna().unique()),
-            ),
-        )
-        .reset_index()
+    # تحديد اسم عمود رقم السورة والمقاصد بناءً على هيكل الـ View الحقيقي
+    surah_col = (
+        "surah_number"
+        if "surah_number" in df_all.columns
+        else ("surah_serial" if "surah_serial" in df_all.columns else df_all.columns[0])
     )
+    notes_col = (
+        "objective_text"
+        if "objective_text" in df_all.columns
+        else ("notes" if "notes" in df_all.columns else None)
+    )
+
+    # -------------------------------------------------------------
+    # تجهيز وتجميع البيانات الأساسية بناءً على العرض السحابي
+    # -------------------------------------------------------------
+    try:
+        group_cols = [surah_col, "surah_name", "ayah_number", "ayah_text"]
+
+        agg_kwargs = {
+            "topics_count": ("topic_or_keyword", "count"),
+            "topics_list": (
+                "topic_or_keyword",
+                lambda x: "، ".join(str(v) for v in x.unique() if pd.notna(v)),
+            ),
+            "groups_list": (
+                "group_id",
+                lambda x: "، ".join(str(v) for v in x.unique() if pd.notna(v)),
+            ),
+        }
+
+        if notes_col:
+            agg_kwargs["notes_list"] = (
+                notes_col,
+                lambda x: " | ".join(str(v) for v in x.dropna().unique()),
+            )
+
+        agg_df = df_all.groupby(group_cols).agg(**agg_kwargs).reset_index()
+
+        # توحيد اسم عمود رقم السورة داخلياً لتسهيل العرض
+        if surah_col != "surah_number":
+            agg_df = agg_df.rename(columns={surah_col: "surah_number"})
+            surah_col = "surah_number"
+
+    except Exception as e:
+        st.error(f"❌ حدث خطأ أثناء تجميع البيانات: {e}")
+        st.stop()
 
     multi_topic_df = agg_df[agg_df["topics_count"] > 1].sort_values(
-        by=["surah_serial", "ayah_number"]
+        by=[surah_col, "ayah_number"]
     )
     single_topic_df = agg_df[agg_df["topics_count"] == 1].sort_values(
-        by=["surah_serial", "ayah_number"]
+        by=[surah_col, "ayah_number"]
     )
-    agg_df = agg_df.sort_values(by=["surah_serial", "ayah_number"])
+    agg_df = agg_df.sort_values(by=[surah_col, "ayah_number"])
 
-    # استخراج قائمة السور الفريدة مرتبة حصرياً برقم السورة (الترتيب المصحفي)
     surah_ordered_df = (
-        agg_df[["surah_serial", "surah_name"]]
-        .drop_duplicates()
-        .sort_values("surah_serial")
+        agg_df[[surah_col, "surah_name"]].drop_duplicates().sort_values(surah_col)
     )
     surah_names_ordered = surah_ordered_df["surah_name"].tolist()
 
     # -------------------------------------------------------------
-    # لوحة المؤشرات الإحصائية (Dashboard) المعتمدة
+    # لوحة المؤشرات الإحصائية (Dashboard)
     # -------------------------------------------------------------
     st.markdown("### 📈 لوحة المؤشرات الإحصائية والملخص العام")
 
@@ -140,14 +154,14 @@ else:
     )
 
     # -------------------------------------------------------------
-    # TAB 1: الفهرس الشامل الكلي للآيات المشتركة (مرتب مصحفياً)
+    # TAB 1: الفهرس الشامل
     # -------------------------------------------------------------
     with title_tab1:
         st.subheader(
             f"📊 الفهرس الاستكشافي للآيات ذات الموضوعات المشتركة (إجمالي الآيات: {len(multi_topic_df)})"
         )
         st.markdown(
-            "يستعرض هذا الجدول الآيات التي وردت في أكثر من موضوع أو كلمة حصر (مرتبة حسب ترتيب السور بالمصحف)، مع بيان رقم الصفحة لتسهيل المراجعة."
+            "يستعرض هذا الجدول الآيات التي وردت في أكثر من موضوع أو كلمة حصر من العرض السحابي (مرتبة حسب ترتيب السور بالمصحف)."
         )
 
         if multi_topic_df.empty:
@@ -155,10 +169,9 @@ else:
         else:
             display_master = multi_topic_df[
                 [
-                    "surah_serial",
+                    surah_col,
                     "surah_name",
                     "ayah_number",
-                    "page_number",
                     "topics_count",
                     "topics_list",
                     "groups_list",
@@ -169,13 +182,12 @@ else:
                 "رقم السورة",
                 "اسم السورة",
                 "رقم الآية",
-                "رقم الصفحة",
                 "عدد الموضوعات",
                 "الكلمات والموضوعات المشتركة",
                 "المجموعات المرتبطة",
             ]
 
-            st.dataframe(display_master, use_container_width=True, hide_index=True)
+            st.dataframe(display_master, width= "stretch", hide_index=True)
 
             st.markdown("---")
             output_master = io.BytesIO()
@@ -192,17 +204,17 @@ else:
                     data=excel_data_master,
                     file_name="Multi_Topic_Ayahs_Index.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True,
+                    width= "stretch",
                     key="dl_master_excel",
                 )
 
     # -------------------------------------------------------------
-    # TAB 2: منصة التدقيق والتحليل المعميق للآية الفردية (مع خيار الكل للآيات)
+    # TAB 2: منصة التدقيق والتحليل المعميق
     # -------------------------------------------------------------
     with title_tab2:
         st.subheader("🔍 منصة التدقيق والتحليل المعميق للآية الفردية")
         st.markdown(
-            "اختر السورة، ثم اختر آية معينة أو اختر **[الكل]** لاستعراض كافة آيات السورة المشتركة مع منطوقها مباشرة في جدول موحد."
+            "اختر السورة، ثم اختر آية معينة أو اختر **[الكل]** لاستعراض كافة آيات السورة المشتركة في جدول موحد."
         )
 
         if multi_topic_df.empty:
@@ -218,7 +230,6 @@ else:
                     key="deep_surah_select",
                 )
 
-            # تصفية الآيات المشتركة حسب السورة
             if selected_deep_surah == "الكل (جميع السور)":
                 filtered_deep_df = multi_topic_df
             else:
@@ -226,14 +237,13 @@ else:
                     multi_topic_df["surah_name"] == selected_deep_surah
                 ]
 
-            # إضافة خيار [الكل] لقائمة الآيات
             ayah_options_map = {}
             ayah_labels_list = ["[الكل] جميع آيات السورة المشتركة المختارة"]
 
             for _, r in filtered_deep_df.iterrows():
-                lbl = f"آية رقم {r['ayah_number']} (صفحة {r['page_number']}) [موضوعات: {r['topics_count']}]"
+                lbl = f"آية رقم {r['ayah_number']} [موضوعات: {r['topics_count']}]"
                 ayah_labels_list.append(lbl)
-                ayah_options_map[lbl] = (r["surah_name"], r["ayah_number"])
+                ayah_options_map[lbl] = (r["surah_name"], int(r["ayah_number"]))
 
             with col_box2:
                 selected_ayah_label = st.selectbox(
@@ -244,20 +254,15 @@ else:
 
             st.markdown("---")
 
-            # -------------------------------------------------------------
-            # الحالة الأولى: إذا اختر الباحث "[الكل] جميع آيات السورة"
-            # -------------------------------------------------------------
             if selected_ayah_label == "[الكل] جميع آيات السورة المشتركة المختارة":
                 st.markdown(
                     f"##### 📂 عرض كافة الآيات المشتركة للسورة: **{selected_deep_surah}** (إجمالي الآيات: {len(filtered_deep_df)})"
                 )
 
-                # تجهيز جدول شامل بدون نصف وربع حزب، ومع إدراج عمود منطوق الآية
                 all_ayahs_display = filtered_deep_df[
                     [
                         "surah_name",
                         "ayah_number",
-                        "page_number",
                         "ayah_text",
                         "topics_list",
                         "groups_list",
@@ -267,17 +272,15 @@ else:
                 all_ayahs_display.columns = [
                     "اسم السورة",
                     "رقم الآية",
-                    "رقم الصفحة",
                     "منطوق الآية الكريمة",
                     "الكلمات والموضوعات المشتركة",
                     "المجموعات المرتبطة",
                 ]
 
                 st.dataframe(
-                    all_ayahs_display, use_container_width=True, hide_index=True
+                    all_ayahs_display, width= "stretch", hide_index=True
                 )
 
-                # زر تصدير كل آيات السورة
                 output_all_surah = io.BytesIO()
                 with pd.ExcelWriter(output_all_surah, engine="xlsxwriter") as writer:
                     all_ayahs_display.to_excel(
@@ -292,13 +295,10 @@ else:
                         data=excel_data_all_surah,
                         file_name=f"Ayahs_Report_{selected_deep_surah}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True,
+                        width= "stretch",
                         key="dl_all_surah_excel",
                     )
 
-            # -------------------------------------------------------------
-            # الحالة الثانية: إذا اختر الباحث آية معينة
-            # -------------------------------------------------------------
             elif selected_ayah_label and selected_ayah_label in ayah_options_map:
                 chosen_surah_name, chosen_ayah_num = ayah_options_map[
                     selected_ayah_label
@@ -312,7 +312,6 @@ else:
                 if not ayah_details.empty:
                     first_row = ayah_details.iloc[0]
 
-                    # حقل المعاينة الفورية المستقل والبارز لمنطوق الآية
                     st.markdown(
                         f"""
                     <div style="background-color: #f0f7f4; padding: 15px 20px; border-radius: 8px; border-right: 5px solid #1b4d3e; text-align: right; margin-bottom: 15px;">
@@ -327,26 +326,21 @@ else:
                         "##### 📌 تفاصيل الموضوعات والكلمات المرتبطة بهذه الآية:"
                     )
 
-                    details_display = ayah_details[
-                        [
-                            "topic_or_keyword",
-                            "group_id",
-                            "notes",
-                            "half_code",
-                            "quarter_code",
-                        ]
-                    ].copy()
+                    details_cols = ["topic_or_keyword", "group_id"]
+                    if notes_col and notes_col in ayah_details.columns:
+                        details_cols.append(notes_col)
 
-                    details_display.columns = [
-                        "الكلمة / الموضوع",
-                        "رقم المجموعة",
-                        "المقاصد والملاحظات (Notes)",
-                        "نصف الحزب",
-                        "ربع الحزب",
-                    ]
+                    details_display = ayah_details[details_cols].copy()
+
+                    rename_dict = {
+                        "topic_or_keyword": "الكلمة / الموضوع",
+                        "group_id": "رقم المجموعة",
+                        notes_col: "مقاصد الآية / الملاحظات",
+                    }
+                    details_display = details_display.rename(columns=rename_dict)
 
                     st.dataframe(
-                        details_display, use_container_width=True, hide_index=True
+                        details_display, width= "stretch", hide_index=True
                     )
 
                     st.markdown("---")
@@ -364,6 +358,6 @@ else:
                             data=excel_data_detail,
                             file_name=f"Ayah_{chosen_surah_name}_{chosen_ayah_num}_Report.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True,
+                            width= "stretch",
                             key="dl_detail_excel",
                         )

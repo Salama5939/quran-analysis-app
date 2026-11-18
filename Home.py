@@ -38,7 +38,7 @@ with col_dl_btn:
             data=pdf_data,
             file_name="دليل_المتدبر_للقرآن_الكريم.pdf",
             mime="application/pdf",
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.warning("⚠️ ملف دليل المتدبر غير موجود حالياً في مجلد المشروع.")
@@ -58,8 +58,7 @@ st.markdown(
 )
 st.markdown("<br>", unsafe_allow_html=True)
 
-# تصميم بوابات الانتقال التسع بنظام 3 أعمدة (3 صفوف × 3 أعمدة)
-# الصف الأول (1, 2, 3)
+# تصميم بوابات الانتقال بنظام الشبكة المتناسقة (الصف الأول)
 r1_c1, r1_c2, r1_c3 = st.columns(3)
 with r1_c1:
     st.markdown("#### 📖 المصحف المصور")
@@ -128,7 +127,7 @@ with r2_c3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# الصف الثالث (7, 8, 9)
+# الصف الثالث (7, 10, 9) - وضع الصفحة العاشرة في المنتصف تماماً
 r3_c1, r3_c2, r3_c3 = st.columns(3)
 with r3_c1:
     st.markdown("#### 🔎 البحث العام الشامل")
@@ -141,14 +140,18 @@ with r3_c1:
         st.switch_page("pages/7_🔍_البحث_العام_الشامل.py")
 
 with r3_c2:
-    st.markdown("#### 🗂️ أرشيف الحفظ والتدبر")
+    st.markdown("#### 🔎 الاستكشاف الذكي للجذور")
     st.markdown(
-        "<p style='font-size: 13px; color: #95A5A6;'>لوحة متابعة وإدارة رحلتك"
-        " القرانية في حفظ وتدبر الآيات الكريمة وتسجيل المراجعات.</p>",
+        "<p style='font-size: 13px; color: #95A5A6;'>المرصد المعجمي الشامل"
+        " للجذور والمشتقات، والتقاطعات المعجمية والحفظ المستقل.</p>",
         unsafe_allow_html=True,
     )
-    if st.button("انتقل إلى أرشيف التدبر 👈", key="btn_archive"):
-        st.switch_page("pages/8_🎯_أرشيف_الحفظ_والتدبر.py")
+    if st.button("انتقل إلى الاستكشاف الذكي 👈", key="btn_smart_root"):
+        st.switch_page(
+            "pages/10_🔍_الستكشاف_الذكي_للجذور.py"
+            if os.path.exists("pages/10_🔍_الستكشاف_الذكي_للجذور.py")
+            else "pages/10_🔍_الاستكشاف_الذكي_للجذور.py"
+        )
 
 with r3_c3:
     st.markdown("#### 📊 الآيات المشتركة والموضوعات")
@@ -159,6 +162,22 @@ with r3_c3:
     )
     if st.button("انتقل إلى الآيات المشتركة 👈", key="btn_shared_topics"):
         st.switch_page("pages/9_📊_الآيات_المشتركة_والموضوعات.py")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# الصف الرابع (أرشيف الحفظ والتدبر في العمود الأوسط col2 لضمان المحاذاة التامة بنسبة 100%)
+r4_c1, r4_c2, r4_c3 = st.columns(3)
+with r4_c2:
+    st.markdown("#### 🗂️ أرشيف الحفظ والتدبر")
+    st.markdown(
+        "<p style='font-size: 13px; color: #95A5A6;'>لوحة متابعة وإدارة رحلتك"
+        " القرانية في حفظ وتدبر الآيات الكريمة وتسجيل المراجعات.</p>",
+        unsafe_allow_html=True,
+    )
+    if st.button(
+        "انتقل إلى أرشيف التدبر 👈", key="btn_archive", use_container_width=True
+    ):
+        st.switch_page("pages/8_🎯_أرشيف_الحفظ_والتدبر.py")
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("---")

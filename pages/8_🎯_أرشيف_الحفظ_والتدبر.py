@@ -93,7 +93,7 @@ if not df.empty:
         "تاريخ الإضافة",
     ]
 
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
+    st.dataframe(display_df, width= "stretch", hide_index=True)
 
     # خيار لحذف آية من الأرشيف عند الحاجة
     st.markdown("---")

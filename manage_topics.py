@@ -172,7 +172,7 @@ with tab1:
                 | df_topics["topic_heading"].str.contains(search_term, na=False)
             ]
 
-        st.dataframe(filtered_df, use_container_width=True)
+        st.dataframe(filtered_df, width= "stretch")
 
         st.markdown("---")
         st.subheader("🛠️ تعديل أو حذف سجل محدد")

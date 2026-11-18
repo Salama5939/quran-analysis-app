@@ -129,7 +129,7 @@ if all_dash_data:
             xaxis_tickangle=-30,
             font=dict(family="Amiri", size=14),
         )
-        st.plotly_chart(fig_groups, use_container_width=True)
+        st.plotly_chart(fig_groups, width= "stretch")
 
     with col_chart2:
         st.markdown("### 🏆 أكثر 10 كلمات تكراراً وارتباطاً")
@@ -155,7 +155,7 @@ if all_dash_data:
             xaxis_tickangle=-45,
             font=dict(family="Amiri", size=14),
         )
-        st.plotly_chart(fig_words, use_container_width=True)
+        st.plotly_chart(fig_words, width= "stretch")
 
     st.markdown("---")
 
@@ -177,7 +177,7 @@ if all_dash_data:
 
     st.dataframe(
         summary_group_df,
-        use_container_width=True,
+        width= "stretch",
         hide_index=True,
         column_config={
             "رقم المجموعة": st.column_config.NumberColumn(
@@ -231,7 +231,7 @@ if all_dash_data:
             )
             st.dataframe(
                 filtered_group_df,
-                use_container_width=True,
+                width= "stretch",
                 hide_index=True,
                 column_config={
                     "الكلمة المحصورة": st.column_config.TextColumn(
@@ -296,7 +296,7 @@ if all_dash_data:
             )
             st.dataframe(
                 filtered_surah_df,
-                use_container_width=True,
+                width= "stretch",
                 hide_index=True,
                 column_config={
                     "الكلمة الموضوعية المحصورة": st.column_config.TextColumn(
