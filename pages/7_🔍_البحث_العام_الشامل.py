@@ -12,6 +12,14 @@ st.set_page_config(
 apply_custom_theme()
 add_home_button()
 
+
+# دالة مساعدة لعكس ترتيب الأعمدة بصرياً (RTL) للعرض دون المساس بالجدول الأصلي
+def prepare_rtl_display_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return df
+    return df.iloc[:, ::-1].copy()
+
+
 st.title("🔍 منصة البحث الشاملة ومقاصد القرآن الكريم")
 st.markdown(
     "<p style='text-align: center; color: #666666;'>المنصة المتكاملة لإدارة الموضوعات، استكشاف الآيات المتشابهات كلياً، التحليل التلقائي للمقاطع، والفهرس الهرمي الموضوعي (معربة بالكامل وعبر Supabase).</p>",
@@ -157,8 +165,9 @@ def fetch_topics():
                 "start_ayah": "رقم الآية",
                 "topic_description": "رقم الصفحة",
             }
-            valid_map = {k: v for k, v in rename_map.items() if k in df.columns}
-            df_display = df.rename(columns=valid_map)
+            valid_cols = [k for k in rename_map.keys() if k in df.columns]
+            valid_map = {k: rename_map[k] for k in valid_cols}
+            df_display = df[valid_cols].rename(columns=valid_map)
             return df, df_display
         return pd.DataFrame(), pd.DataFrame()
     except Exception as e:
@@ -238,7 +247,8 @@ with tab1:
                 )
                 filtered_df_disp = filtered_df_disp[mask]
 
-            st.dataframe(filtered_df_disp, use_container_width=True, hide_index=True)
+            rtl_topics_disp = prepare_rtl_display_df(filtered_df_disp)
+            st.dataframe(rtl_topics_disp, use_container_width=True, hide_index=True)
             st.markdown("---")
             st.subheader("🛠️ تعديل أو حذف سجل محدد من القاعدة")
 
@@ -543,7 +553,8 @@ with tab2:
                 "منطوق الآية الكريمة",
                 "رقم الصفحة",
             ]
-            st.dataframe(display_exact_df, use_container_width=True, hide_index=True)
+            rtl_exact_df = prepare_rtl_display_df(display_exact_df)
+            st.dataframe(rtl_exact_df, use_container_width=True, hide_index=True)
 
             excel_data_exact = convert_df_to_excel(
                 display_exact_df, sheet_name="Exact_Mutashabihahat"
@@ -638,7 +649,8 @@ with tab3:
                 "منطوق الآية الكريمة",
                 "رقم الصفحة",
             ]
-            st.dataframe(display_snippet_df, use_container_width=True, hide_index=True)
+            rtl_snippet_df = prepare_rtl_display_df(display_snippet_df)
+            st.dataframe(rtl_snippet_df, use_container_width=True, hide_index=True)
 
             excel_data_snippets = convert_df_to_excel(
                 display_snippet_df, sheet_name="Automatic_Snippet_Analysis"
@@ -751,8 +763,9 @@ with tab4:
                 k: v for k, v in rename_map_t4.items() if k in df_res_t4.columns
             }
             df_disp_t4 = df_res_t4[list(valid_r4.keys())].rename(columns=valid_r4)
+            rtl_t4_df = prepare_rtl_display_df(df_disp_t4)
 
-            st.dataframe(df_disp_t4, use_container_width=True, hide_index=True)
+            st.dataframe(rtl_t4_df, use_container_width=True, hide_index=True)
 
             excel_data_t4 = convert_df_to_excel(
                 df_disp_t4, sheet_name="Hierarchical_Topic_Index"

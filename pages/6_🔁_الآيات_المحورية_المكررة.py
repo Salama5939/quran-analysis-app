@@ -14,6 +14,14 @@ st.set_page_config(
 theme.apply_custom_theme()
 theme.add_home_button()
 
+
+# دالة مساعدة لعكس ترتيب الأعمدة بصرياً (RTL) للعرض دون المساس بالجدول الأصلي
+def prepare_rtl_display_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return df
+    return df.iloc[:, ::-1].copy()
+
+
 st.markdown(
     "<h1 style='text-align: center; color: #F1C40F;'>🔁 تحليل الآيات المحورية الأكثر ارتباطاً وتكراراً</h1>",
     unsafe_allow_html=True,
@@ -156,8 +164,11 @@ if not df_relations.empty:
 
     st.success(f"✅ تم العثور على ({len(table_display_df)}) آية مطابقة لشروط الفلتر.")
 
+    # نسخة العرض البصري المستقلة RTL مع الإبقاء على table_display_df للتصدير إلى Excel
+    rtl_table_df = prepare_rtl_display_df(table_display_df)
+
     st.dataframe(
-        table_display_df,
+        rtl_table_df,
         use_container_width=True,
         hide_index=True,
         column_config={
@@ -185,7 +196,7 @@ if not df_relations.empty:
         },
     )
 
-    # استخدام دالة التصدير المركزية من database.py
+    # استخدام دالة التصدير المركزية من database.py مع table_display_df الأصلي
     excel_data_ayahs = convert_df_to_excel(
         table_display_df, sheet_name="الآيات_المحورية"
     )

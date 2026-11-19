@@ -17,6 +17,14 @@ st.set_page_config(
 apply_custom_theme()
 add_home_button()
 
+
+# دالة مساعدة لعكس ترتيب الأعمدة بصرياً (RTL) للعرض دون المساس بالجدول الأصلي
+def prepare_rtl_display_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return df
+    return df.iloc[:, ::-1].copy()
+
+
 st.title("🔎 منصة الاستكشاف الذكي للجذور والمشتقات القرآنية")
 st.markdown(
     "<p style='text-align: center; color: #666666;'>منصة متقدمة للبحث الذكي في الجذور، المرصد المعجمي الشامل للتقاطعات، والحفظ في جداول مستقلة.</p>",
@@ -134,10 +142,11 @@ else:
                         "رقم الصفحة",
                     ]
 
-                    # تنظيف الجدول عبر الدالة المركزية
+                    # تنظيف الجدول عبر الدالة المركزية ثم عكس الأعمدة بصرياً للعرض فقط
                     display_df = clean_dataframe_for_display(display_df)
+                    rtl_display_df = prepare_rtl_display_df(display_df)
 
-                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    st.dataframe(rtl_display_df, use_container_width=True, hide_index=True)
 
                     st.markdown("---")
                     st.subheader("💾 حفظ النتائج في جدول (smart_root_topics)")
@@ -277,9 +286,10 @@ else:
                 "عدد السور المنتشرة بها",
             ]
             summary_df = clean_dataframe_for_display(summary_df)
+            rtl_summary_df = prepare_rtl_display_df(summary_df)
 
             st.subheader("📚 الملخص المعجمي للكلمات المفردة (مرتبة أبجدياً)")
-            st.dataframe(summary_df, use_container_width=True, hide_index=True)
+            st.dataframe(rtl_summary_df, use_container_width=True, hide_index=True)
 
             st.markdown("---")
             st.subheader("🔍 استعراض تفاصيل الآيات والتصفية الموجهة")
@@ -316,9 +326,10 @@ else:
                 "رقم الصفحة",
             ]
             display_t2 = clean_dataframe_for_display(display_t2)
+            rtl_display_t2 = prepare_rtl_display_df(display_t2)
 
             st.markdown(f"📊 **إجمالي السجلات التفصيلية المعروضة:** {len(display_t2)}")
-            st.dataframe(display_t2, use_container_width=True, hide_index=True)
+            st.dataframe(rtl_display_t2, use_container_width=True, hide_index=True)
 
             # أزرار التصدير المزدوج
             excel_data_t2 = convert_df_to_excel(

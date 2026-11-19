@@ -17,6 +17,14 @@ st.set_page_config(
 theme.apply_custom_theme()
 theme.add_home_button()
 
+
+# دالة مساعدة لعكس ترتيب الأعمدة بصرياً (RTL) للعرض دون المساس بالجدول الأصلي
+def prepare_rtl_display_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return df
+    return df.iloc[:, ::-1].copy()
+
+
 st.markdown(
     "<h1 style='text-align: center; color: #F1C40F;'>📈 الخريطة الإحصائية ولوحة المؤشرات التحليلية</h1>",
     unsafe_allow_html=True,
@@ -151,7 +159,7 @@ if raw_data:
                 xaxis_tickangle=-30,
                 font=dict(family="Amiri", size=14),
             )
-            st.plotly_chart(fig_groups, width= "stretch")
+            st.plotly_chart(fig_groups, width="stretch")
 
         with col_chart2:
             st.markdown("##### 🏆 أكثر 10 كلمات تكراراً وارتباطاً")
@@ -177,7 +185,7 @@ if raw_data:
                 xaxis_tickangle=-45,
                 font=dict(family="Amiri", size=14),
             )
-            st.plotly_chart(fig_words, width= "stretch")
+            st.plotly_chart(fig_words, width="stretch")
 
         st.markdown("---")
 
@@ -196,9 +204,10 @@ if raw_data:
             "إجمالي الآيات المرتبطة",
         ]
 
+        summary_group_display = prepare_rtl_display_df(summary_group_df)
         st.dataframe(
-            summary_group_df,
-            width= "stretch",
+            summary_group_display,
+            width="stretch",
             hide_index=True,
             column_config={
                 "رقم المجموعة": st.column_config.NumberColumn(
@@ -267,9 +276,10 @@ if raw_data:
                 st.success(
                     f"📌 الكلمات والموضوعات والآيات التابعة للمجموعة ({selected_group_drill}) وعددها ({len(filtered_group_df)} سجل):"
                 )
+                filtered_group_display = prepare_rtl_display_df(filtered_group_df)
                 st.dataframe(
-                    filtered_group_df,
-                    width= "stretch",
+                    filtered_group_display,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "الكلمة المحصورة": st.column_config.TextColumn(
@@ -342,9 +352,10 @@ if raw_data:
                     st.success(
                         f"📖 الكلمات والموضوعات المحصورة والآيات المرتبطة بـ **(سورة {selected_surah_drill})** وعددها ({len(final_surah_df)} سجل):"
                     )
+                    final_surah_display = prepare_rtl_display_df(final_surah_df)
                     st.dataframe(
-                        final_surah_df,
-                        width= "stretch",
+                        final_surah_display,
+                        width="stretch",
                         hide_index=True,
                         column_config={
                             "الكلمة الموضوعية المحصورة": st.column_config.TextColumn(
@@ -421,9 +432,10 @@ if raw_data:
                     st.markdown(
                         f"** النتائج المفلترة المخصصة (عدد السجلات: {len(filtered_drill_df)}):**"
                     )
+                    filtered_drill_display = prepare_rtl_display_df(filtered_drill_df)
                     st.dataframe(
-                        filtered_drill_df,
-                        width= "stretch",
+                        filtered_drill_display,
+                        width="stretch",
                         hide_index=True,
                         column_config={
                             "الكلمة الموضوعية المحصورة": st.column_config.TextColumn(

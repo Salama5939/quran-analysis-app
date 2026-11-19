@@ -13,6 +13,14 @@ st.set_page_config(
 apply_custom_theme()
 add_home_button()
 
+
+# دالة مساعدة لعكس ترتيب الأعمدة بصرياً (RTL) للعرض دون المساس بالجدول الأصلي
+def prepare_rtl_display_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return df
+    return df.iloc[:, ::-1].copy()
+
+
 st.title("📊 محلل ومستكشف الآيات المشتركة والموضوعات المتعددة")
 st.markdown(
     "<p style='text-align: center; color: #666666;'>استكشاف وتحليل الآيات التي تحوي أكثر من موضوع أو كلمة حصر، مع لوحة مؤشرات تفاعلية وترتيب مصحفي دقيق وربط بالمقاصد.</p>",
@@ -190,7 +198,8 @@ else:
                 "المجموعات المرتبطة",
             ]
 
-            st.dataframe(display_master, use_container_width=True, hide_index=True)
+            rtl_master = prepare_rtl_display_df(display_master)
+            st.dataframe(rtl_master, use_container_width=True, hide_index=True)
 
             st.markdown("---")
             excel_data_master = convert_df_to_excel(
@@ -256,7 +265,8 @@ else:
 
             if selected_ayah_label == "[الكل] جميع آيات السورة المشتركة المختارة":
                 st.markdown(
-                    f"##### 📂 عرض كافة الآيات المشتركة للسورة: **{selected_deep_surah}** (إجمالي الآيات: {len(filtered_deep_df)})"
+                    f"<div dir='rtl' style='text-align: right; font-size: 1.05rem; font-weight: bold; margin-bottom: 8px;'>📂 عرض كافة الآيات المشتركة للسورة: <span style='color: #1b4d3e;'>{selected_deep_surah}</span> (إجمالي الآيات: {len(filtered_deep_df)})</div>",
+                    unsafe_allow_html=True,
                 )
 
                 all_ayahs_display = filtered_deep_df[
@@ -279,8 +289,9 @@ else:
                     "المجموعات المرتبطة",
                 ]
 
+                rtl_all_ayahs = prepare_rtl_display_df(all_ayahs_display)
                 st.dataframe(
-                    all_ayahs_display, use_container_width=True, hide_index=True
+                    rtl_all_ayahs, use_container_width=True, hide_index=True
                 )
 
                 excel_data_all_surah = convert_df_to_excel(
@@ -344,9 +355,10 @@ else:
                         "quarter_code": "ربع الحزب",
                     }
                     details_display = details_display.rename(columns=rename_dict)
+                    rtl_details = prepare_rtl_display_df(details_display)
 
                     st.dataframe(
-                        details_display, use_container_width=True, hide_index=True
+                        rtl_details, use_container_width=True, hide_index=True
                     )
 
                     st.markdown("---")

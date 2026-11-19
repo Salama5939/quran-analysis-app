@@ -21,6 +21,14 @@ st.set_page_config(
 theme.apply_custom_theme()
 theme.add_home_button()
 
+
+# دالة مساعدة لعكس ترتيب الأعمدة بصرياً (RTL) للعرض دون المساس بالجدول الأصلي
+def prepare_rtl_display_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return df
+    return df.iloc[:, ::-1].copy()
+
+
 st.markdown(
     "<h1 style='text-align: center; color: #F1C40F;'>📊 النظام التحليلي والبحث الموضوعي</h1>",
     unsafe_allow_html=True,
@@ -140,9 +148,10 @@ with tab1:
                     }
                 )
             df_hsor_view = pd.DataFrame(table_data_hsor)
+            df_hsor_display = prepare_rtl_display_df(df_hsor_view)
             st.dataframe(
-                df_hsor_view,
-                width= "stretch",
+                df_hsor_display,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "منطوق الآية": st.column_config.TextColumn(
@@ -210,10 +219,11 @@ with tab1:
                 )
 
             df_quran_view = pd.DataFrame(table_data_quran)
+            df_quran_display = prepare_rtl_display_df(df_quran_view)
 
             edited_df = st.data_editor(
-                df_quran_view,
-                width= "stretch",
+                df_quran_display,
+                width="stretch",
                 hide_index=True,
                 column_config={
                     "اختيار للترحيل": st.column_config.CheckboxColumn(
@@ -384,9 +394,10 @@ with tab2:
                     )
 
                 df_main_t2 = pd.DataFrame(table_rows)
+                df_display_t2 = prepare_rtl_display_df(df_main_t2)
                 st.dataframe(
-                    df_main_t2,
-                    width= "stretch",
+                    df_display_t2,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "مسلسل": st.column_config.NumberColumn(
@@ -473,9 +484,10 @@ with tab3:
             "تفاصيل مقصد السورة",
         ]
 
+        df_surahs_display = prepare_rtl_display_df(df_surahs_view)
         st.dataframe(
-            df_surahs_view,
-            width= "stretch",
+            df_surahs_display,
+            width="stretch",
             hide_index=True,
             column_config={
                 "مسلسل": st.column_config.NumberColumn(
@@ -581,14 +593,16 @@ with tab4:
                 st.success(
                     f"✅ إجمالي عدد الكلمات الفريدة الناتجة في ({selected_group_filter}): **{len(df_grouped)} كلمة**"
                 )
+                df_grouped_renamed = df_grouped.rename(
+                    columns={
+                        "topic_or_keyword": "الكلمة / الموضوع",
+                        "المجموعات_المرتبطة": "رقم المجموعة (المجموعات)",
+                    }
+                )
+                df_grouped_display = prepare_rtl_display_df(df_grouped_renamed)
                 st.dataframe(
-                    df_grouped.rename(
-                        columns={
-                            "topic_or_keyword": "الكلمة / الموضوع",
-                            "المجموعات_المرتبطة": "رقم المجموعة (المجموعات)",
-                        }
-                    ),
-                    width= "stretch",
+                    df_grouped_display,
+                    width="stretch",
                     hide_index=True,
                 )
             else:

@@ -16,6 +16,14 @@ theme.apply_custom_theme()
 # إضافة زر العودة السريع للرئيسية
 theme.add_home_button()
 
+
+# دالة مساعدة لعكس ترتيب الأعمدة بصرياً (RTL) للعرض دون المساس بالجدول الأصلي
+def prepare_rtl_display_df(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return df
+    return df.iloc[:, ::-1].copy()
+
+
 st.markdown(
     "<h1 style='text-align: center; color: #F1C40F;'>🌉 محرك الربط الموضوعي والمقاصدي الذكي</h1>",
     unsafe_allow_html=True,
@@ -129,11 +137,12 @@ if keywords_list:
                     )
 
                 df_bridge = pd.DataFrame(bridge_rows)
+                df_bridge_display = prepare_rtl_display_df(df_bridge)
 
-                # عرض الجدول الرئيسي
+                # عرض الجدول الرئيسي عبر نسخة العرض المستقلة
                 st.dataframe(
-                    df_bridge,
-                    width= "stretch",
+                    df_bridge_display,
+                    width="stretch",
                     hide_index=True,
                     column_config={
                         "مسلسل": st.column_config.NumberColumn(
@@ -204,10 +213,11 @@ if keywords_list:
                             )
 
                         df_drill = pd.DataFrame(drill_rows)
+                        df_drill_display = prepare_rtl_display_df(df_drill)
 
                         st.dataframe(
-                            df_drill,
-                            width= "stretch",
+                            df_drill_display,
+                            width="stretch",
                             hide_index=True,
                             column_config={
                                 "مسلسل": st.column_config.NumberColumn(
@@ -231,7 +241,7 @@ if keywords_list:
                             },
                         )
 
-                        # زر تصدير آيات هذه المجموعة إلى Excel
+                        # زر تصدير آيات هذه المجموعة إلى Excel مع الإبقاء على df_drill الأصلي
                         excel_drill_bytes = convert_df_to_excel(
                             df_drill, sheet_name=f"مجموعة_{selected_group_drill}"
                         )
@@ -242,7 +252,7 @@ if keywords_list:
                                 data=excel_drill_bytes,
                                 file_name=f"Ayahs_Group_{selected_group_drill}_{active_keyword}.xlsx",
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                width= "stretch",
+                                width="stretch",
                             )
                     else:
                         st.warning("⚠️ لا توجد آيات تفصيلية مسجلة لهذه المجموعة.")
