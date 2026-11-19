@@ -118,24 +118,41 @@ with tab1:
     repo_name = "quran-analysis-app"
     branch = "main"
 
-    cover_url = f"https://cdn.jsdelivr.net/gh/{github_user}/{repo_name}@{branch}/Quran-PNG-master/quran%20gold%20cover.png"
-    bismallah_url = f"https://cdn.jsdelivr.net/gh/{github_user}/{repo_name}@{branch}/Quran-PNG-master/000.png"
+    def get_mushaf_image_urls(filename: str) -> tuple[str, str]:
+        primary_url = (
+            f"https://cdn.jsdelivr.net/gh/{github_user}/{repo_name}@{branch}/Quran-PNG-master/{filename}"
+        )
+        fallback_url = (
+            f"https://raw.githubusercontent.com/{github_user}/{repo_name}/{branch}/Quran-PNG-master/{filename}"
+        )
+        return primary_url, fallback_url
+
+    def render_img_tag(filename: str, alt_text: str) -> str:
+        primary_url, fallback_url = get_mushaf_image_urls(filename)
+        return (
+            f'<img src="{primary_url}" '
+            f'data-fallback="{fallback_url}" '
+            f'onerror="if(!this.dataset.retried){{this.dataset.retried=\"1\";this.src=this.dataset.fallback;}}" '
+            f'alt="{alt_text}">'
+        )
 
     def get_spread_html(p):
         if p == -1:
+            cover_img = render_img_tag("quran%20gold%20cover.png", "غلاف المصحف الشريف")
             return f"""
                 <div class="spread-container">
                     <div class="single-page cover-page">
-                        <img src="{cover_url}" alt="غلاف المصحف الشريف">
+                        {cover_img}
                     </div>
                 </div>
             """
         elif p == 0:
+            bismallah_img = render_img_tag("000.png", "البسملة")
             return f"""
                 <div class="spread-container">
                     <div class="page left-page blank-page"></div>
                     <div class="page right-page bismallah-page">
-                        <img src="{bismallah_url}" alt="البسملة">
+                        {bismallah_img}
                         <div class="page-footer">0</div>
                     </div>
                 </div>
@@ -148,21 +165,13 @@ with tab1:
                 right_p = p - 1
                 left_p = p
 
-            right_url = (
-                f"https://cdn.jsdelivr.net/gh/{github_user}/{repo_name}@{branch}/Quran-PNG-master/{right_p:03d}.png"
-                if right_p <= 604
-                else ""
-            )
-            left_url = (
-                f"https://cdn.jsdelivr.net/gh/{github_user}/{repo_name}@{branch}/Quran-PNG-master/{left_p:03d}.png"
-                if left_p and left_p <= 604
-                else ""
-            )
+            left_img = render_img_tag(f"{left_p:03d}.png", f"صفحة {left_p}") if (left_p and left_p <= 604) else ""
+            right_img = render_img_tag(f"{right_p:03d}.png", f"صفحة {right_p}") if right_p <= 604 else ""
 
             left_html = (
                 f"""
                 <div class="page left-page">
-                    <img src="{left_url}" alt="صفحة {left_p}">
+                    {left_img}
                     <div class="page-footer">{left_p}</div>
                 </div>
             """
@@ -173,7 +182,7 @@ with tab1:
             right_html = (
                 f"""
                 <div class="page right-page">
-                    <img src="{right_url}" alt="صفحة {right_p}">
+                    {right_img}
                     <div class="page-footer">{right_p}</div>
                 </div>
             """
