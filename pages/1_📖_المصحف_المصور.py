@@ -119,12 +119,8 @@ with tab1:
     branch = "main"
 
     def get_mushaf_image_urls(filename: str) -> tuple[str, str]:
-        primary_url = (
-            f"https://cdn.jsdelivr.net/gh/{github_user}/{repo_name}@{branch}/Quran-PNG-master/{filename}"
-        )
-        fallback_url = (
-            f"https://raw.githubusercontent.com/{github_user}/{repo_name}/{branch}/Quran-PNG-master/{filename}"
-        )
+        primary_url = f"https://cdn.jsdelivr.net/gh/{github_user}/{repo_name}@{branch}/Quran-PNG-master/{filename}"
+        fallback_url = f"https://raw.githubusercontent.com/{github_user}/{repo_name}/{branch}/Quran-PNG-master/{filename}"
         return primary_url, fallback_url
 
     def render_img_tag(filename: str, alt_text: str) -> str:
@@ -132,7 +128,7 @@ with tab1:
         return (
             f'<img src="{primary_url}" '
             f'data-fallback="{fallback_url}" '
-            f'onerror="if(!this.dataset.retried){{this.dataset.retried=\"1\";this.src=this.dataset.fallback;}}" '
+            f'onerror="if(!this.dataset.retried){{this.dataset.retried="1";this.src=this.dataset.fallback;}}" '
             f'alt="{alt_text}">'
         )
 
@@ -165,8 +161,16 @@ with tab1:
                 right_p = p - 1
                 left_p = p
 
-            left_img = render_img_tag(f"{left_p:03d}.png", f"صفحة {left_p}") if (left_p and left_p <= 604) else ""
-            right_img = render_img_tag(f"{right_p:03d}.png", f"صفحة {right_p}") if right_p <= 604 else ""
+            left_img = (
+                render_img_tag(f"{left_p:03d}.png", f"صفحة {left_p}")
+                if (left_p and left_p <= 604)
+                else ""
+            )
+            right_img = (
+                render_img_tag(f"{right_p:03d}.png", f"صفحة {right_p}")
+                if right_p <= 604
+                else ""
+            )
 
             left_html = (
                 f"""
