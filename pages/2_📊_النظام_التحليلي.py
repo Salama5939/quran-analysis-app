@@ -77,6 +77,10 @@ with tab1:
         st.session_state.search_results_master = {"hsor": [], "quran": []}
         st.session_state.searched_word_master = ""
         st.session_state.search_input_table_master = ""
+        st.session_state.t1_selection_map = {}
+        st.session_state.t1_selection_word = ""
+        if "editor_quran_verses_master" in st.session_state:
+            del st.session_state["editor_quran_verses_master"]
         st.session_state.clear_screen_flag_master = False
 
     search_query = st.text_input(
@@ -193,18 +197,108 @@ with tab1:
                     s_ser = int(r.get("surah_serial", 0))
                     a_num = int(r.get("ayah_number", 0))
                     existing_ayahs.add((s_ser, a_num))
-                except:
+                except Exception:
                     pass
+
+            if "t1_selection_map" not in st.session_state:
+                st.session_state.t1_selection_map = {}
+            if st.session_state.get("t1_selection_word") != current_word:
+                st.session_state.t1_selection_map = {}
+                st.session_state.t1_selection_word = current_word
+                if "editor_quran_verses_master" in st.session_state:
+                    del st.session_state["editor_quran_verses_master"]
+
+            # مزامنة أي تعديل يدوي سابق من المحرر قبل إعادة رسم الأزرار
+            prev_editor_state = st.session_state.get("editor_quran_verses_master")
+            if (
+                isinstance(prev_editor_state, dict)
+                and "edited_rows" in prev_editor_state
+            ):
+                base_rows_for_sync = []
+                for idx_s, q_s in enumerate(res_quran):
+                    s_n_s = int(q_s.get("surah_number", 0))
+                    a_n_s = int(q_s.get("ayah_number", 0))
+                    key_s = f"{s_n_s}:{a_n_s}:{idx_s}"
+                    base_rows_for_sync.append(key_s)
+                for r_idx_str, changes in prev_editor_state["edited_rows"].items():
+                    try:
+                        r_idx = int(r_idx_str)
+                        if "اختيار للترحيل" in changes and 0 <= r_idx < len(
+                            base_rows_for_sync
+                        ):
+                            st.session_state.t1_selection_map[
+                                base_rows_for_sync[r_idx]
+                            ] = bool(changes["اختيار للترحيل"])
+                    except Exception:
+                        pass
+
+            row_keys = []
+            new_row_keys = []
+            for idx, q in enumerate(res_quran, 1):
+                s_num = int(q.get("surah_number", 0))
+                a_num = int(q.get("ayah_number", 0))
+                is_already_saved = (s_num, a_num) in existing_ayahs
+                r_key = f"{s_num}:{a_num}:{idx - 1}"
+                row_keys.append(r_key)
+                if not is_already_saved:
+                    new_row_keys.append(r_key)
+                if r_key not in st.session_state.t1_selection_map:
+                    st.session_state.t1_selection_map[r_key] = False
+
+            # أزرار التحكم الجماعي السريع + عداد فوري للمحدد
+            col_act1, col_act2, col_act3, col_act4 = st.columns([1.4, 1.6, 1.4, 2.6])
+            with col_act1:
+                if st.button(
+                    "☑️ تحديد الكل", key="btn_select_all_quran_t1", width="stretch"
+                ):
+                    for k in row_keys:
+                        st.session_state.t1_selection_map[k] = True
+                    if "editor_quran_verses_master" in st.session_state:
+                        del st.session_state["editor_quran_verses_master"]
+                    st.rerun()
+
+            with col_act2:
+                if st.button(
+                    "✨ تحديد الجديد فقط",
+                    key="btn_select_new_quran_t1",
+                    width="stretch",
+                ):
+                    new_set = set(new_row_keys)
+                    for k in row_keys:
+                        st.session_state.t1_selection_map[k] = k in new_set
+                    if "editor_quran_verses_master" in st.session_state:
+                        del st.session_state["editor_quran_verses_master"]
+                    st.rerun()
+
+            with col_act3:
+                if st.button(
+                    "☐ إلغاء التحديد", key="btn_deselect_all_quran_t1", width="stretch"
+                ):
+                    for k in row_keys:
+                        st.session_state.t1_selection_map[k] = False
+                    if "editor_quran_verses_master" in st.session_state:
+                        del st.session_state["editor_quran_verses_master"]
+                    st.rerun()
+
+            selected_live_count = sum(
+                1 for k in row_keys if st.session_state.t1_selection_map.get(k, False)
+            )
+            with col_act4:
+                st.info(
+                    f"📌 **المحدد حالياً للترحيل:** {selected_live_count} من {len(row_keys)} آية (الجديد المتاح: {len(new_row_keys)})"
+                )
 
             table_data_quran = []
             for idx, q in enumerate(res_quran, 1):
                 s_num = int(q.get("surah_number", 0))
                 a_num = int(q.get("ayah_number", 0))
                 is_already_saved = (s_num, a_num) in existing_ayahs
+                r_key = f"{s_num}:{a_num}:{idx - 1}"
+                is_checked = bool(st.session_state.t1_selection_map.get(r_key, False))
 
                 table_data_quran.append(
                     {
-                        "اختيار للترحيل": False,
+                        "اختيار للترحيل": is_checked,
                         "مسلسل": idx,
                         "رقم السورة": s_num,
                         "إسم السورة": q.get("surah_name"),
