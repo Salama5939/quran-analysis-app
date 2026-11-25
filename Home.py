@@ -165,19 +165,37 @@ with r3_c3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# الصف الرابع (أرشيف الحفظ والتدبر في العمود الأوسط col2 لضمان المحاذاة التامة بنسبة 100%)
+# الصف الرابع (8، 11، 12 بتنسيق متوازن)
 r4_c1, r4_c2, r4_c3 = st.columns(3)
-with r4_c2:
+with r4_c1:
     st.markdown("#### 🗂️ أرشيف الحفظ والتدبر")
     st.markdown(
         "<p style='font-size: 13px; color: #95A5A6;'>لوحة متابعة وإدارة رحلتك"
         " القرانية في حفظ وتدبر الآيات الكريمة وتسجيل المراجعات.</p>",
         unsafe_allow_html=True,
     )
-    if st.button(
-        "انتقل إلى أرشيف التدبر 👈", key="btn_archive", use_container_width=True
-    ):
+    if st.button("انتقل إلى أرشيف التدبر 👈", key="btn_archive"):
         st.switch_page("pages/8_🎯_أرشيف_الحفظ_والتدبر.py")
+
+with r4_c2:
+    st.markdown("#### 🧭 المعمارية البصرية والمفاهيمية")
+    st.markdown(
+        "<p style='font-size: 13px; color: #95A5A6;'>الخريطة البنيوية الشاملة"
+        " للطبقات الخمس والمحاور الـ 24 والعقد الـ 96 وفق قاعدة نفي الترادف.</p>",
+        unsafe_allow_html=True,
+    )
+    if st.button("انتقل إلى المعمارية المفاهيمية 👈", key="btn_architecture"):
+        st.switch_page("pages/11_🧭_المعمارية_المفاهيمية.py")
+
+with r4_c3:
+    st.markdown("#### 🏛️ معمارية المجموعات الثمانية")
+    st.markdown(
+        "<p style='font-size: 13px; color: #95A5A6;'>الخريطة الهرمية الشاملة"
+        " للمجموعات الثمانية والسور الـ 114 ومقاصدها وبنائها المقطعي.</p>",
+        unsafe_allow_html=True,
+    )
+    if st.button("انتقل إلى المجموعات الثمانية 👈", key="btn_groups8_arch"):
+        st.switch_page("pages/12_🏛️_معمارية_المجموعات_الثمانية.py")
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("---")

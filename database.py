@@ -205,11 +205,224 @@ def clean_dataframe_for_display(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
         return df
 
-    # قائمة الأعمدة التقنية المراد إخفاؤها تلقائياً أينما وجدت
     unwanted_columns = ["created_at", "updated_at", "id"]
-
-    # إسقاط الأعمدة إن وجدت في الجدول
     df_cleaned = df.drop(
         columns=[col for col in unwanted_columns if col in df.columns], errors="ignore"
     )
     return df_cleaned
+
+
+@st.cache_data(ttl=3600)
+def fetch_all_supabase_rows(
+    table_name: str,
+    select_cols: str = "*",
+    order_col: str = "id",
+    batch_size: int = 1000,
+) -> list:
+    """
+    جلب جميع الصفوف من أي جدول أو View في Supabase بنظام الدفعات (Pagination)
+    لتجاوز حد الـ 1000 صف الافتراضي في واجهة PostgREST.
+    """
+    all_rows = []
+    offset = 0
+
+    while True:
+        res = (
+            supabase.table(table_name)
+            .select(select_cols)
+            .order(order_col)
+            .range(offset, offset + batch_size - 1)
+            .execute()
+        )
+        batch = res.data if res.data else []
+        all_rows.extend(batch)
+        if len(batch) < batch_size:
+            break
+        offset += batch_size
+
+    return all_rows
+
+
+# ==========================================
+# 5. التمييز البصري للرسم العثماني والأرشفة التدبرية
+# ==========================================
+def highlight_uthmani_keyword(uthmani_text: str, query: str) -> str:
+    """
+    تمييز الكلمة أو العبارة المبحوث عنها ومشتقاتها العثمانية داخل نص الآية
+    بصيغة Streamlit Markdown الأصلية (:blue[**«الكلمة»**]) بدقة لغوية تمنع
+    تلوين الكلمات القصيرة المتداخلة عشوائياً (مثل تداخل 'ما' داخل 'الماء' أو 'لما').
+    """
+    if not uthmani_text or not query or not query.strip():
+        return uthmani_text or ""
+
+    def _deep_norm(s: str) -> str:
+        s_clean = str(s).replace("آ", "اا")
+        base = normalize_arabic(s_clean)
+        return re.sub(r"[ءئؤ]", "ا", base)
+
+    norm_q = _deep_norm(query.strip())
+    if not norm_q:
+        return uthmani_text
+
+    # استبعاد حروف الجر/النفي المكونة من حرفين من التطابق الجزئي داخل كلمات أخرى
+    stop_short_words = {
+        "ما",
+        "لا",
+        "في",
+        "من",
+        "عن",
+        "ان",
+        "او",
+        "قد",
+        "بل",
+        "اذ",
+        "يا",
+    }
+
+    q_words = [w for w in re.findall(r"[\u0600-\u06FF]+", norm_q) if len(w) >= 2]
+    exact_short_words = {w for w in q_words if w in stop_short_words}
+    core_variants = {w for w in q_words if w not in stop_short_words}
+
+    if len(norm_q) >= 3 and norm_q not in stop_short_words:
+        core_variants.add(norm_q)
+
+    # معالجة صيغ النداء العثماني المتصل مثل: يَا أَيُّهَا -> يايها
+    if "يا" in q_words and "ايها" in q_words:
+        core_variants.add("يايها")
+
+    # معالجة صيغ أفعل التفضيل/الماضي مثل: أظلم (اظلم) -> يشمل جذر (ظلم)
+    for w in list(core_variants):
+        if len(w) >= 4 and w.startswith("ا"):
+            core_variants.add(w[1:])
+
+    tokens = re.split(r"(\s+)", str(uthmani_text))
+    highlighted_tokens = []
+
+    for tok in tokens:
+        if not tok.strip():
+            highlighted_tokens.append(tok)
+            continue
+
+        norm_tok = _deep_norm(tok)
+        clean_tok_letters = re.sub(r"[^\u0600-\u06FF]", "", norm_tok)
+
+        # 1. الكلمات القصيرة جداً (مثل: ما، لا، في) تُطابق فقط ككلمة مستقلة أو مسبوقة بواو/فاء (وما، فلا)
+        short_matched = any(
+            clean_tok_letters == sw or clean_tok_letters in {f"و{sw}", f"ف{sw}"}
+            for sw in exact_short_words
+        )
+
+        # 2. الكلمات الأساسية (3 أحرف فأكثر) تُطابق الكلمة ومشتقاتها وسوابقها العثمانية
+        core_matched = any(v in clean_tok_letters for v in core_variants if len(v) >= 3)
+
+        if short_matched or core_matched:
+            highlighted_tokens.append(f":blue[**«{tok}»**]")
+        else:
+            highlighted_tokens.append(tok)
+
+    return "".join(highlighted_tokens)
+
+
+def save_ayah_to_memorization_archive(
+    surah_serial: int,
+    surah_name: str,
+    ayah_number: int,
+    ayah_text: str,
+    status_label: str = "تدبر مقاصدي - المجموعات الثمانية",
+) -> tuple[bool, str]:
+    """
+    حفظ آية في جدول user_memorization_archive (الصفحة 8) مع منع التكرار.
+    تُرجع (True/False, رسالة توضيحية).
+    """
+    try:
+        existing = (
+            supabase.table("user_memorization_archive")
+            .select("id, memorization_status")
+            .eq("surah_serial", int(surah_serial))
+            .eq("ayah_number", int(ayah_number))
+            .limit(1)
+            .execute()
+        )
+        if existing.data and len(existing.data) > 0:
+            return (
+                False,
+                f"ℹ️ الآية ({surah_name}: {ayah_number}) مسجلة مسبقاً في أرشيفك بحالة: «{existing.data[0].get('memorization_status', '')}».",
+            )
+
+        payload = {
+            "surah_serial": int(surah_serial),
+            "surah_name": str(surah_name).strip(),
+            "ayah_number": int(ayah_number),
+            "ayah_text": str(ayah_text).strip(),
+            "memorization_status": str(status_label).strip(),
+        }
+        supabase.table("user_memorization_archive").insert(payload).execute()
+        return (
+            True,
+            f"✅ تم ترحيل الآية ({surah_name}: {ayah_number}) إلى أرشيف الحفظ والتدبر (الصفحة 8) بنجاح!",
+        )
+    except Exception as e:
+        return (False, f"❌ تعذّر الحفظ في الأرشيف: {e}")
+
+
+# ==========================================
+# 6. خدمات الصوتيات وتنقية العرض وتأسيس مستندات Word (RTL)
+# ==========================================
+def clean_arabic_display(text: str) -> str:
+    """تصحيح أخطاء التشكيل الطباعية الشائعة مثل (للهّ / الل هّ) أثناء العرض"""
+    if not text:
+        return ""
+    s = str(text)
+    s = re.sub(r"الل\s+هّ?", "الله", s)
+    s = s.replace("للهّ", "لله").replace("اللهّ", "الله")
+    return s.strip()
+
+
+def get_everyayah_audio_url(
+    surah_num: int, ayah_num: int, reciter: str = "MaherAlMuaiqly128kbps"
+) -> str:
+    """بناء رابط التلاوة الصوتية عبر EveryAyah (الافتراضي: الشيخ ماهر المعيقلي)"""
+    return f"https://everyayah.com/data/{reciter}/{int(surah_num):03d}{int(ayah_num):03d}.mp3"
+
+
+def init_rtl_docx():
+    """إنشاء مستند Word جديد مع دوال مساعدة جاهزة للكتابة العربية من اليمين لليسار (RTL)"""
+    from docx import Document
+    from docx.shared import Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    doc = Document()
+
+    def set_p_rtl(paragraph, align=WD_ALIGN_PARAGRAPH.RIGHT):
+        paragraph.alignment = align
+        pPr = paragraph._p.get_or_add_pPr()
+        pPr.append(OxmlElement("w:bidi"))
+
+    def set_tbl_rtl(table):
+        tblPr = table._tbl.tblPr
+        tblPr.append(OxmlElement("w:bidiVisual"))
+
+    def add_run_rtl(
+        paragraph,
+        text: str,
+        font_name: str = "Arial",
+        size_pt: int = 12,
+        bold: bool = False,
+        color_rgb=None,
+    ):
+        run = paragraph.add_run(str(text))
+        run.font.name = font_name
+        run.font.size = Pt(size_pt)
+        run.bold = bold
+        if color_rgb:
+            run.font.color.rgb = RGBColor(*color_rgb)
+        rPr = run._r.get_or_add_rPr()
+        rFonts = OxmlElement("w:rFonts")
+        rFonts.set(qn("w:cs"), font_name)
+        rPr.append(rFonts)
+        rPr.append(OxmlElement("w:rtl"))
+        return run
+
+    return doc, set_p_rtl, set_tbl_rtl, add_run_rtl, WD_ALIGN_PARAGRAPH
