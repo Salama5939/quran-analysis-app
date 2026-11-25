@@ -1,6 +1,7 @@
 import os
 import io
 import json
+import random
 import importlib.util
 import pandas as pd
 import streamlit as st
@@ -15,19 +16,21 @@ from database import (
     convert_df_to_excel,
     clean_dataframe_for_display,
     fetch_all_supabase_rows,
+    search_full_quran_stable,
     highlight_uthmani_keyword,
     save_ayah_to_memorization_archive,
+    save_keyword_bulk_to_relations,
     clean_arabic_display,
     get_everyayah_audio_url,
     init_rtl_docx,
 )
 
 # ==============================================================================
-# إعدادات الصفحة الأساسية
+# إعدادات الصفحة التجريبية المستقلة (في المجلد الجذري بجانب Home.py)
 # ==============================================================================
 st.set_page_config(
-    page_title="المعمارية البصرية للمجموعات الثمانية (114 سورة)",
-    page_icon="🏛️",
+    page_title="اختبار التبويب الرابع المطور — المجموعات الثمانية",
+    page_icon="🧪",
     layout="wide",
 )
 
@@ -35,7 +38,7 @@ apply_custom_theme()
 add_home_button()
 
 # ==============================================================================
-# تنسيقات CSS مخصصة للصفحة 12 (تشمل فئة التظليل الذهبي .uthmani-hl)
+# تنسيقات CSS مخصصة للصفحة
 # ==============================================================================
 st.markdown(
     """
@@ -43,7 +46,7 @@ st.markdown(
         .g8-hero {
             background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 60%, #0D9488 100%);
             color: #FFFFFF !important;
-            padding: 1.6rem 2rem;
+            padding: 1.5rem 2rem;
             border-radius: 16px;
             border-bottom: 4px solid #D97706;
             margin-bottom: 1.2rem;
@@ -53,13 +56,13 @@ st.markdown(
             font-family: 'Amiri', serif !important;
             color: #FFFFFF !important;
             text-align: center !important;
-            font-size: 2rem !important;
-            margin-bottom: 0.4rem !important;
+            font-size: 1.95rem !important;
+            margin-bottom: 0.35rem !important;
         }
         .g8-hero p {
             color: #E2E8F0 !important;
             text-align: center !important;
-            font-size: 1rem !important;
+            font-size: 0.98rem !important;
             margin: 0 !important;
         }
         .surah-obj-banner {
@@ -82,21 +85,12 @@ st.markdown(
         }
         .ayah-uthmani {
             font-family: 'Amiri', serif !important;
-            font-size: 1.55rem !important;
-            line-height: 2.25 !important;
+            font-size: 1.45rem !important;
+            line-height: 2.1 !important;
             color: #1E293B !important;
             text-align: right !important;
             direction: rtl !important;
             margin-bottom: 0.45rem;
-        }
-        .uthmani-hl {
-            background-color: #FEF08A !important;
-            color: #7C2D12 !important;
-            padding: 2px 8px !important;
-            border-radius: 6px !important;
-            font-weight: 800 !important;
-            border-bottom: 3px solid #D97706 !important;
-            box-shadow: 0 1px 4px rgba(217, 119, 6, 0.28) !important;
         }
         .ayah-meta-badge {
             display: inline-block;
@@ -109,13 +103,36 @@ st.markdown(
             font-weight: 700;
             margin-left: 0.45rem;
         }
-        .kw-active-banner {
-            background-color: #EFF6FF;
+        .badge-saved {
+            display: inline-block;
+            background-color: #DCFCE7;
+            color: #166534;
+            border: 1px solid #86EFAC;
+            padding: 0.18rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            margin-bottom: 0.4rem;
+        }
+        .badge-new-quran {
+            display: inline-block;
+            background-color: #DBEAFE;
+            color: #1E40AF;
             border: 1px solid #93C5FD;
+            padding: 0.18rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            margin-bottom: 0.4rem;
+        }
+        .discovery-panel {
+            background-color: #FFFFFF;
+            border: 1px solid #CBD5E1;
             border-right: 5px solid #1E3A8A;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 0.85rem 1.2rem;
-            margin: 0.8rem 0 1rem 0;
+            margin-bottom: 0.9rem;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
         }
     </style>
     """,
@@ -124,12 +141,11 @@ st.markdown(
 
 
 # ==============================================================================
-# دوال توليد بطاقات التدبر الخاصة بالصفحة 12 (Word .docx)
+# دوال توليد بطاقات التدبر (Word .docx)
 # ==============================================================================
 def generate_surah_tadabbur_docx(
     s_info: pd.Series, topics_df: pd.DataFrame, ayahs_df: pd.DataFrame
 ) -> bytes:
-    """توليد بطاقة تدبر مقاصدية لسورة محددة بصيغة Word (.docx)"""
     doc, set_p_rtl, set_tbl_rtl, add_run_rtl, WD_ALIGN = init_rtl_docx()
 
     p_title = doc.add_paragraph()
@@ -169,17 +185,16 @@ def generate_surah_tadabbur_docx(
         p_obj, str(s_info["surah_objective"]), size_pt=12, color_rgb=(15, 23, 42)
     )
 
-    p_top_h = doc.add_paragraph()
-    set_p_rtl(p_top_h)
-    add_run_rtl(
-        p_top_h,
-        f"📑 البناء المقطعي والموضوعي للسورة ({len(topics_df)} مقطعاً):",
-        size_pt=14,
-        bold=True,
-        color_rgb=(30, 58, 138),
-    )
-
     if not topics_df.empty:
+        p_top_h = doc.add_paragraph()
+        set_p_rtl(p_top_h)
+        add_run_rtl(
+            p_top_h,
+            f"📑 البناء المقطعي والموضوعي للسورة ({len(topics_df)} مقطعاً):",
+            size_pt=14,
+            bold=True,
+            color_rgb=(30, 58, 138),
+        )
         tbl = doc.add_table(rows=1, cols=2)
         tbl.style = "Table Grid"
         set_tbl_rtl(tbl)
@@ -243,9 +258,8 @@ def generate_search_tadabbur_docx(
     query_str: str,
     matched_surahs: pd.DataFrame,
     matched_topics: pd.DataFrame,
-    matched_kw_records: pd.DataFrame,
+    combined_ayahs_list: list[dict],
 ) -> bytes:
-    """توليد بطاقة بحث وتدبر شاملة بصيغة Word (.docx) لنتائج التبويب الرابع"""
     doc, set_p_rtl, _, add_run_rtl, WD_ALIGN = init_rtl_docx()
 
     p_title = doc.add_paragraph()
@@ -263,7 +277,7 @@ def generate_search_tadabbur_docx(
     set_p_rtl(p_meta, WD_ALIGN.CENTER)
     add_run_rtl(
         p_meta,
-        f"السور المرتبطة: {len(matched_surahs)} | المقاطع التفصيلية: {len(matched_topics)} | الشواهد المعتمدة: {len(matched_kw_records)}",
+        f"السور المرتبطة: {len(matched_surahs)} | المقاطع التفصيلية: {len(matched_topics)} | إجمالي الشواهد: {len(combined_ayahs_list)}",
         size_pt=11,
         bold=True,
         color_rgb=(13, 148, 136),
@@ -312,37 +326,42 @@ def generate_search_tadabbur_docx(
             )
             add_run_rtl(p_t, str(tr["topic_detail"]), size_pt=11)
 
-    if not matched_kw_records.empty:
+    if combined_ayahs_list:
         p_h3 = doc.add_paragraph()
         set_p_rtl(p_h3)
         add_run_rtl(
             p_h3,
-            "\n3️⃣ الشواهد القرآنية المعتمدة وملاحظاتها:",
+            "\n3️⃣ الشواهد القرآنية (الحصر المعتمد والمصحف الشامل):",
             size_pt=14,
             bold=True,
             color_rgb=(30, 58, 138),
         )
-        for _, kr in matched_kw_records.head(40).iterrows():
+        for item in combined_ayahs_list[:50]:
             p_k = doc.add_paragraph()
             set_p_rtl(p_k)
+            src_label = (
+                "مسجلة بالحصر" if item["source"] == "saved" else "من المصحف الشامل"
+            )
             add_run_rtl(
                 p_k,
-                f"«{kr['topic_or_keyword']}» — سورة {kr.get('surah_name', '')} ({int(kr['surah_number'])}:{int(kr['ayah_number'])})\n",
+                f"«{item['label']}» — سورة {item['surah_name']} ({item['surah_number']}:{item['ayah_number']}) [{src_label}]\n",
                 size_pt=12,
                 bold=True,
                 color_rgb=(180, 83, 9),
             )
             add_run_rtl(
                 p_k,
-                f"﴿ {kr.get('ayah_text', '')} ﴾\n",
+                f"﴿ {item['ayah_text']} ﴾\n",
                 font_name="Amiri",
                 size_pt=14,
                 color_rgb=(15, 23, 42),
             )
-            note_s = str(kr.get("notes", "")).strip()
-            if note_s:
+            if item.get("notes"):
                 add_run_rtl(
-                    p_k, f"الملاحظة: {note_s}", size_pt=10, color_rgb=(71, 85, 105)
+                    p_k,
+                    f"الملاحظة: {item['notes']}",
+                    size_pt=10,
+                    color_rgb=(71, 85, 105),
                 )
 
     buf = io.BytesIO()
@@ -351,7 +370,7 @@ def generate_search_tadabbur_docx(
 
 
 # ==============================================================================
-# دوال جلب البيانات الخاصة بالمجموعات الثمانية
+# دوال جلب البيانات
 # ==============================================================================
 def load_groups8_hierarchy() -> pd.DataFrame:
     rows = fetch_all_supabase_rows(
@@ -440,7 +459,7 @@ def load_ayah_pages_lookup() -> dict:
 
 
 # ==============================================================================
-# بناء الخريطة البصرية التفاعلية للمجموعات الثمانية (114 سورة)
+# الخريطة البصرية (التبويب 1)
 # ==============================================================================
 def build_groups8_visual_map_html(
     df_hier: pd.DataFrame, df_topics: pd.DataFrame
@@ -455,7 +474,6 @@ def build_groups8_visual_map_html(
         7: "#C2410C",
         8: "#1D4ED8",
     }
-
     topics_by_surah = {}
     if not df_topics.empty:
         for _, trow in df_topics.iterrows():
@@ -498,9 +516,6 @@ def build_groups8_visual_map_html(
         g_name = str(g_df["group_name"].iloc[0])
         g_obj = str(g_df["group_objective"].iloc[0])
         color_hex = group_colors.get(gnum, "#1E3A8A")
-        surah_count = len(g_df)
-        total_g_ayahs = int(g_df["total_ayahs"].sum())
-
         chips_parts = []
         for _, srow in g_df.iterrows():
             snum = int(srow["surah_number"])
@@ -519,14 +534,13 @@ def build_groups8_visual_map_html(
                     <span class="surah-obj-mini">{short_obj}</span>
                 </div>
                 """)
-
         groups_html_parts.append(f"""
             <div class="group-card" id="group-card-{gnum}" style="border-right-color: {color_hex};">
                 <div class="group-header-row">
                     <div><span class="group-title">{g_name}: {g_obj}</span></div>
                     <div class="group-stats-badges">
-                        <span class="g-badge">{surah_count} سورة</span>
-                        <span class="g-badge">{total_g_ayahs} آية</span>
+                        <span class="g-badge">{len(g_df)} سورة</span>
+                        <span class="g-badge">{int(g_df["total_ayahs"].sum())} آية</span>
                     </div>
                 </div>
                 <div class="surahs-grid">{"".join(chips_parts)}</div>
@@ -732,8 +746,8 @@ if df_hierarchy.empty:
 st.markdown(
     """
     <div class="g8-hero">
-        <h2>🏛️ المعمارية البصرية الهرمية للمجموعات الثمانية في القرآن الكريم</h2>
-        <p>البناء الشمولي المتدرج: من المقصد العام للمجموعات الثمانية ⬅ إلى مقاصد السور الـ 114 ⬅ إلى المقاطع التفصيلية والآيات</p>
+        <h2>🧪 مختبر تطوير البحث الشامل — معمارية المجموعات الثمانية</h2>
+        <p>الدمج بين الاستكشاف الموجّه للمفاهيم المعتمدة + المسح التلقائي المزدوج للمصحف الشامل + الحفظ التراكمي بضغطة واحدة</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -752,16 +766,16 @@ tab_map, tab_surah_ws, tab_keywords, tab_search = st.tabs(
         "🗺️ الخريطة البصرية الهرمية (8 مجموعات / 114 سورة)",
         "📖 مساحة تدبر السورة وآياتها (مع التلاوة والمصحف)",
         "🔑 الكلمات والمفاهيم المحورية داخل كل مجموعة",
-        "🔍 البحث الشامل في مقاصد المجموعات والسور",
+        "🔍 البحث الشامل والاكتشاف الذكي (النسخة المطورة)",
     ]
 )
 
 # ==============================================================================
-# التبويب 1: الخريطة البصرية التفاعلية للمجموعات الثمانية والسور الـ 114
+# التبويب 1: الخريطة البصرية
 # ==============================================================================
 with tab_map:
     st.info(
-        "💡 انقر على أي بطاقة سورة داخل المجموعات الثمانية لفتح مساحة عملها ومقاطعها ومعادلتها المقاصدية، أو استخدم شريط التصفية والبحث في الأعلى."
+        "💡 انقر على أي بطاقة سورة داخل المجموعات الثمانية لفتح مساحة عملها ومقاطعها ومعادلتها المقاصدية."
     )
     components.html(
         build_groups8_visual_map_html(df_hierarchy, df_topics),
@@ -771,11 +785,10 @@ with tab_map:
 
 
 # ==============================================================================
-# التبويب 2: مساحة تدبر السورة ومقاطعها وآياتها بالرسم العثماني والتلاوة
+# التبويب 2: مساحة تدبر السورة
 # ==============================================================================
 with tab_surah_ws:
     col_g, col_s = st.columns([1.2, 1.8])
-
     groups_dict = {
         int(r["group_number"]): f"{r['group_name']} — {r['group_objective']}"
         for _, r in df_hierarchy[["group_number", "group_name", "group_objective"]]
@@ -866,7 +879,6 @@ with tab_surah_ws:
                 )
         else:
             from_ayah, to_ayah = 1, max_a
-
         sub_ayahs = df_ayahs[
             (df_ayahs["ayah_number"] >= from_ayah)
             & (df_ayahs["ayah_number"] <= to_ayah)
@@ -895,25 +907,6 @@ with tab_surah_ws:
                     f"- **المقطع {int(trow['topic_order'])}:** {trow['topic_detail']}"
                 )
 
-            export_topics_df = clean_dataframe_for_display(s_topics_df).rename(
-                columns={
-                    "group_number": "رقم المجموعة",
-                    "group_name": "اسم المجموعة",
-                    "surah_number": "رقم السورة",
-                    "surah_name": "اسم السورة",
-                    "total_ayahs": "عدد الآيات",
-                    "start_page": "صفحة البداية",
-                    "topic_order": "ترتيب المقطع",
-                    "topic_detail": "تفصيل المقطع",
-                }
-            )
-            st.download_button(
-                label=f"📥 تصدير البناء المقطعي لسورة {s_name} إلى Excel",
-                data=convert_df_to_excel(export_topics_df, sheet_name=f"سورة_{s_name}"),
-                file_name=f"Surah_{sel_surah}_{s_name}_Architecture.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
-
     st.markdown(f"### 📜 آيات سورة {s_name} بالرسم العثماني والتلاوة الصوتية")
     if not sub_ayahs.empty:
         for _, arow in sub_ayahs.iterrows():
@@ -921,7 +914,6 @@ with tab_surah_ws:
             pnum = int(arow["page_number"])
             jnum = int(arow["juz"])
             atext = str(arow["ayah_text"])
-
             st.markdown(
                 f"""
                 <div class="ayah-card">
@@ -951,21 +943,14 @@ with tab_surah_ws:
                         ayah_text=atext,
                         status_label=f"تدبر مقاصدي ({s_info['group_name']})",
                     )
-                    if ok:
-                        st.success(msg)
-                    else:
-                        st.info(msg)
+                    st.success(msg) if ok else st.info(msg)
 
 
 # ==============================================================================
-# التبويب 3: الكلمات والمفاهيم المحورية داخل كل مجموعة (مع التمييز والأرشفة)
+# التبويب 3: الكلمات والمفاهيم المحورية داخل كل مجموعة
 # ==============================================================================
 with tab_keywords:
     st.subheader("🔑 الكلمات والمفاهيم القرآنية المرتبطة بكل مجموعة وسورها")
-    st.write(
-        "انقر على أي كلمة من البطاقات التفاعلية أدناه لاستعراض جميع الآيات القرآنية التابعة لها مع تمييز موضع الكلمة باللون الذهبي، والتلاوة الصوتية، والترحيل لأرشيف التدبر."
-    )
-
     if df_keywords.empty:
         st.info("لا توجد بيانات كلمات مفتاحية مسجلة حالياً.")
     else:
@@ -975,7 +960,6 @@ with tab_keywords:
             format_func=lambda x: groups_dict[x],
             key="kw_group_select",
         )
-
         g_kw_df = df_keywords[df_keywords["group_id"] == sel_kw_group].copy()
         if g_kw_df.empty:
             st.warning("لا توجد كلمات مسجلة لهذه المجموعة.")
@@ -993,7 +977,6 @@ with tab_keywords:
                 .sort_values("مرات_التكرار", ascending=False)
                 .reset_index(drop=True)
             )
-
             all_kw_list = kw_agg["topic_or_keyword"].tolist()
             state_key_kw = f"active_kw_g_{sel_kw_group}"
             if (
@@ -1001,10 +984,6 @@ with tab_keywords:
                 or st.session_state[state_key_kw] not in all_kw_list
             ):
                 st.session_state[state_key_kw] = all_kw_list[0]
-
-            st.success(
-                f"إجمالي المفاهيم والكلمات المرتبطة بالمجموعة {sel_kw_group}: **{len(kw_agg)}** مفهوماً (انقر على أي زر لعرض آياته)."
-            )
 
             top_kws = kw_agg.head(24)
             cols_per_row = 6
@@ -1087,32 +1066,16 @@ with tab_keywords:
                             ayah_text=raw_atext,
                             status_label=f"تدبر كلمة «{active_word}» (المجموعة {sel_kw_group})",
                         )
-                        if ok:
-                            st.success(msg)
-                        else:
-                            st.info(msg)
-
-            st.markdown("---")
-            st.markdown("#### 📊 الجدول الإحصائي الشامل لكلمات المجموعة")
-            st.dataframe(kw_agg, use_container_width=True, hide_index=True)
-
-            st.download_button(
-                label=f"📥 تصدير كلمات المجموعة {sel_kw_group} إلى Excel",
-                data=convert_df_to_excel(
-                    kw_agg, sheet_name=f"كلمات_المجموعة_{sel_kw_group}"
-                ),
-                file_name=f"Group_{sel_kw_group}_Keywords.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
+                        st.success(msg) if ok else st.info(msg)
 
 
 # ==============================================================================
-# التبويب 4: البحث الشامل في مقاصد المجموعات والسور والكلمات والملاحظات
+# التبويب 4 المطور: الاستكشاف الموجّه + البحث المزدوج المنضبط + الحفظ الشامل
 # ==============================================================================
 with tab_search:
     c_s_head, c_s_ref = st.columns([3.2, 1.1])
     with c_s_head:
-        st.subheader("🔍 البحث النصي الشامل في منظومة المجموعات الثمانية")
+        st.subheader("🔍 البحث الشامل والاكتشاف الذكي في المصحف والمجموعات الثمانية")
     with c_s_ref:
         if st.button(
             "🔄 تحديث البيانات الآن",
@@ -1122,166 +1085,443 @@ with tab_search:
             st.cache_data.clear()
             st.rerun()
 
-    q_text = st.text_input(
-        "أدخل كلمة أو مفهوماً للبحث في: مقاصد المجموعات الـ 8، مقاصد السور الـ 114، المقاطع التفصيلية، والكلمات المعتمدة وملاحظاتها:",
-        placeholder="مثال: نرزقكم، الهدى، الصراط المستقيم، التوحيد، بني إسرائيل...",
-        key="g8_global_search",
+    if "g8_global_search" not in st.session_state:
+        st.session_state["g8_global_search"] = ""
+
+    # بناء فهرس جميع المفاهيم المعتمدة في قاعدة البيانات (مرتبة حسب التكرار)
+    catalog_keywords = []
+    if not df_keywords.empty:
+        kw_summary = (
+            df_keywords.groupby("topic_or_keyword", as_index=False)
+            .agg(ayah_cnt=("surah_number", "count"))
+            .sort_values("ayah_cnt", ascending=False)
+        )
+        catalog_keywords = kw_summary["topic_or_keyword"].tolist()
+
+    # --------------------------------------------------------------------------
+    # الطبقة الأولى: شريط الاستكشاف الموجّه (يغني الباحث عن تذكر الكلمات)
+    # --------------------------------------------------------------------------
+    st.markdown(
+        """
+        <div class="discovery-panel">
+            <strong style="color:#1E3A8A; font-size:0.98rem;">🧭 بوصلة الاستكشاف السريع (تصفح المفاهيم المعتمدة بالحرف أو القائمة أو الاقتراح العشوائي):</strong>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    if q_text.strip():
-        clean_q = q_text.strip()
-        norm_q = normalize_arabic(clean_q)
+    arabic_letters = [
+        "الكل",
+        "ا",
+        "ب",
+        "ت",
+        "ث",
+        "ج",
+        "ح",
+        "خ",
+        "د",
+        "ذ",
+        "ر",
+        "ز",
+        "س",
+        "ش",
+        "ص",
+        "ض",
+        "ط",
+        "ظ",
+        "ع",
+        "غ",
+        "ف",
+        "ق",
+        "ك",
+        "ل",
+        "م",
+        "ن",
+        "ه",
+        "و",
+        "ي",
+    ]
 
-        matched_kw_records = pd.DataFrame()
-        if not df_keywords.empty:
-            matched_kw_records = df_keywords[
-                df_keywords.apply(
-                    lambda r: norm_q
-                    in normalize_arabic(
-                        f"{r.get('topic_or_keyword', '')} {r.get('notes', '')}"
-                    ),
-                    axis=1,
-                )
-            ]
-
-        kw_linked_surahs = (
-            set(matched_kw_records["surah_number"].astype(int).tolist())
-            if not matched_kw_records.empty
-            else set()
+    c_let, c_cat, c_rand = st.columns([1.1, 2.3, 1.1])
+    with c_let:
+        sel_letter = st.selectbox(
+            "1️⃣ تصفية بأول حرف:",
+            options=arabic_letters,
+            index=0,
+            key="g8_alpha_filter",
         )
 
-        matched_surahs = df_hierarchy[
-            df_hierarchy.apply(
-                lambda r: (
-                    norm_q
-                    in normalize_arabic(
-                        f"{r['group_name']} {r['group_objective']} {r['surah_name']} {r['surah_objective']}"
-                    )
-                )
-                or (int(r["surah_number"]) in kw_linked_surahs),
-                axis=1,
-            )
+    filtered_catalog = catalog_keywords
+    if sel_letter != "الكل":
+        filtered_catalog = [
+            kw for kw in catalog_keywords if normalize_arabic(kw).startswith(sel_letter)
         ]
 
-        matched_topics = df_topics[
-            df_topics.apply(
-                lambda r: (norm_q in normalize_arabic(str(r["topic_detail"])))
-                or (int(r["surah_number"]) in kw_linked_surahs),
-                axis=1,
-            )
-        ]
+    with c_cat:
+        dropdown_options = ["— اختر مفهوماً معتمداً من الفهرس —"] + filtered_catalog
+        sel_from_catalog = st.selectbox(
+            f"2️⃣ الفهرس المعتمد ({len(filtered_catalog)} مفهوماً):",
+            options=dropdown_options,
+            index=0,
+            key="g8_catalog_picker",
+        )
+        if sel_from_catalog != "— اختر مفهوماً معتمداً من الفهرس —":
+            if st.session_state.get("_last_picked_kw") != sel_from_catalog:
+                st.session_state["_last_picked_kw"] = sel_from_catalog
+                st.session_state["g8_global_search"] = sel_from_catalog
+                st.rerun()
 
-        if HAS_DOCX and (
-            not matched_surahs.empty
-            or not matched_topics.empty
-            or not matched_kw_records.empty
+    with c_rand:
+        st.markdown("<div style='height: 1.75rem;'></div>", unsafe_allow_html=True)
+        if st.button(
+            "🎲 اقترح مفهوماً للتدبر",
+            key="btn_random_concept",
+            use_container_width=True,
         ):
-            st.download_button(
-                label=f"📄 تحميل بطاقة تدبر نتائج البحث عن «{clean_q}» بصيغة Word (.docx)",
-                data=generate_search_tadabbur_docx(
-                    clean_q, matched_surahs, matched_topics, matched_kw_records
-                ),
-                file_name=f"Tadabbur_Search_{clean_q}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                key="dl_search_tadabbur_docx",
+            if catalog_keywords:
+                rand_kw = random.choice(catalog_keywords)
+                st.session_state["_last_picked_kw"] = rand_kw
+                st.session_state["g8_global_search"] = rand_kw
+                st.rerun()
+
+    # مربع البحث النصي الحر (يبحث في عنوان المفهوم بالحصر + نصوص آيات المصحف الشامل فقط)
+    c_inp, c_clr = st.columns([3.8, 0.7])
+    with c_inp:
+        q_text = st.text_input(
+            "3️⃣ أو اكتب أي كلمة أو مقطع آية للبحث الفوري في الحصر المعتمد والمصحف الشامل (6,236 آية):",
+            placeholder="مثال: أظلم، الحي القيوم، الصبر، أو أي كلمة قرآنية جديدة غير محفوظة...",
+            key="g8_global_search",
+        )
+    with c_clr:
+        st.markdown("<div style='height: 1.75rem;'></div>", unsafe_allow_html=True)
+        if st.button("🧹 مسح", key="btn_clear_g8_search", use_container_width=True):
+            st.session_state["g8_global_search"] = ""
+            st.session_state["_last_picked_kw"] = ""
+            st.rerun()
+
+    # --------------------------------------------------------------------------
+    # الطبقة الثانية: البحث المزدوج المنضبط (topic_or_keyword + full_quran فقط)
+    # --------------------------------------------------------------------------
+if q_text.strip():
+    clean_q = q_text.strip()
+    norm_q = normalize_arabic(clean_q)
+    q_tokens = norm_q.split()
+
+    # المسار 1: الحصر المعتمد (مطابقة نصية تامة لعنوان المفهوم topic_or_keyword فقط)
+    matched_kw_records = pd.DataFrame()
+    if not df_keywords.empty:
+        matched_kw_records = df_keywords[
+            df_keywords["topic_or_keyword"].apply(
+                lambda kw: normalize_arabic(str(kw or "")) == norm_q
             )
+        ]
 
-        surah_to_group_info = {
-            int(r["surah_number"]): (
-                r["group_name"],
-                r["group_objective"],
-                r["surah_objective"],
+    saved_pairs = set()
+    if not matched_kw_records.empty:
+        for _, kr in matched_kw_records.iterrows():
+            saved_pairs.add((int(kr["surah_number"]), int(kr["ayah_number"])))
+
+    # المسار 2: المسح الشامل للمصحف (full_quran) بتطابق الكلمة/العبارة نصاً
+    raw_quran_hits = search_full_quran_stable(clean_q)
+    full_quran_hits = []
+    for q in raw_quran_hits:
+        norm_ay = normalize_arabic(
+            str(q.get("plain_ayah_text") or q.get("ayah_text") or "")
+        )
+        if len(q_tokens) == 1:
+            # تطابق الكلمة المفردة نصاً ضمن كلمات الآية (وليس كجزء من كلمة أخرى مثل سبحان/يسبحون)
+            if norm_q in norm_ay.split():
+                full_quran_hits.append(q)
+        else:
+            # تطابق العبارة المكونة من أكثر من كلمة
+            if norm_q in norm_ay:
+                full_quran_hits.append(q)
+
+    new_quran_ayahs = [
+        q
+        for q in full_quran_hits
+        if (int(q["surah_number"]), int(q["ayah_number"])) not in saved_pairs
+    ]
+
+    # بناء خريطة السورة -> (رقم المجموعة، اسم المجموعة، مقصد المجموعة، مقصد السورة)
+    surah_to_group_info = {
+        int(r["surah_number"]): (
+            int(r["group_number"]),
+            r["group_name"],
+            r["group_objective"],
+            r["surah_objective"],
+        )
+        for _, r in df_hierarchy.iterrows()
+    }
+    surah_to_group_save_map = {
+        s_num: (info[0], info[2]) for s_num, info in surah_to_group_info.items()
+    }
+
+    # ----------------------------------------------------------------------
+    # بوابة الاعتماد والحفظ الشامل التراكمي للآيات الجديدة
+    # ----------------------------------------------------------------------
+    if len(new_quran_ayahs) > 0:
+        is_completely_new = len(saved_pairs) == 0
+        alert_title = (
+            f"🆕 الكلمة/العبارة «{clean_q}» جديدة كلياً وغير مسجلة في ملف الحصر المعتمد (وُجدت في {len(new_quran_ayahs)} آية بالمصحف)."
+            if is_completely_new
+            else f"💡 المفهوم «{clean_q}» مسجل له ({len(saved_pairs)}) آية بالحصر، ووُجد له ({len(new_quran_ayahs)}) آية إضافية في المصحف الشامل."
+        )
+
+        with st.container(border=True):
+            st.warning(
+                f"**{alert_title}** هل ترغب في اعتمادها وحفظ جميع آياتها الجديدة بملف الحصر؟"
             )
-            for _, r in df_hierarchy.iterrows()
-        }
+            c_note_in, c_save_btn = st.columns([2.5, 1.5])
+            with c_note_in:
+                user_custom_note = st.text_input(
+                    "ملاحظة تدبرية اختيارية تُحفظ مع السجلات (اتركها فارغة لاعتماد مقصد المجموعة تلقائياً):",
+                    placeholder="اكتب ملاحظتك التدبرية هنا إن شئت...",
+                    key=f"bulk_note_{clean_q}",
+                )
+            with c_save_btn:
+                st.markdown(
+                    "<div style='height: 1.75rem;'></div>", unsafe_allow_html=True
+                )
+                if st.button(
+                    f"💾 اعتماد وحفظ الكل ({len(new_quran_ayahs)} آية)",
+                    type="primary",
+                    key=f"btn_bulk_save_{clean_q}",
+                    use_container_width=True,
+                ):
+                    ok_save, msg_save = save_keyword_bulk_to_relations(
+                        keyword=clean_q,
+                        ayah_records=new_quran_ayahs,
+                        surah_to_group_map=surah_to_group_save_map,
+                        custom_note=user_custom_note,
+                    )
+                    if ok_save:
+                        st.success(msg_save)
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.info(msg_save)
 
-        c_res1, c_res2, c_res3 = st.columns(3)
+    # استخراج السور المرتبطة من الآيات الناتجة عن المسارين (1 و 2) حصراً
+    kw_linked_surahs = {p[0] for p in saved_pairs}
+    quran_linked_surahs = {int(q["surah_number"]) for q in full_quran_hits}
+    all_linked_surahs = kw_linked_surahs | quran_linked_surahs
 
-        with c_res1:
-            st.markdown(f"#### 🎯 المقاصد المطابقة ({len(matched_surahs)} سورة)")
-            if matched_surahs.empty:
-                st.info("لا توجد سور مطابقة في المقاصد.")
-            else:
-                for _, sr in matched_surahs.iterrows():
-                    s_id = int(sr["surah_number"])
-                    direct_hit = norm_q in normalize_arabic(
-                        f"{sr['group_name']} {sr['group_objective']} {sr['surah_name']} {sr['surah_objective']}"
-                    )
-                    badge_txt = (
-                        "مطابقة نصية بالمقصد"
-                        if direct_hit
-                        else f"مرتبطة بكلمة البحث ({clean_q})"
-                    )
-                    with st.expander(
-                        f"سورة {sr['surah_name']} ({s_id}) — {sr['group_name']} [{badge_txt}]",
-                        expanded=True,
-                    ):
-                        st.markdown(f"**مقصد المجموعة:** {sr['group_objective']}")
-                        st.markdown(f"**مقصد السورة:** {sr['surah_objective']}")
+    matched_surahs = df_hierarchy[
+        df_hierarchy["surah_number"].astype(int).isin(all_linked_surahs)
+    ]
 
-        with c_res2:
-            st.markdown(f"#### 📑 المقاطع التفصيلية ({len(matched_topics)} مقطعاً)")
-            if matched_topics.empty:
-                st.info("لا توجد مقاطع تفصيلية مطابقة.")
-            else:
-                for _, tr in matched_topics.head(40).iterrows():
-                    direct_topic_hit = norm_q in normalize_arabic(
-                        str(tr["topic_detail"])
-                    )
-                    t_badge = (
-                        "مطابقة نصية"
-                        if direct_topic_hit
-                        else f"مرتبطة بكلمة البحث ({clean_q})"
-                    )
-                    with st.expander(
-                        f"سورة {tr['surah_name']} — المقطع {int(tr['topic_order'])} ({tr['group_name']}) [{t_badge}]",
-                        expanded=not direct_topic_hit,
-                    ):
-                        st.write(tr["topic_detail"])
+    matched_topics = df_topics[
+        df_topics["surah_number"].astype(int).isin(all_linked_surahs)
+    ]
 
-        with c_res3:
-            st.markdown(
-                f"#### 🔑 الكلمات والملاحظات ({len(matched_kw_records)} شاهداً)"
-            )
-            if matched_kw_records.empty:
-                st.info("لا توجد كلمات أو ملاحظات مطابقة في الحصر المعتمد.")
-            else:
-                for idx_s, kr in matched_kw_records.head(40).iterrows():
-                    s_num = int(kr["surah_number"])
-                    a_num = int(kr["ayah_number"])
-                    s_name = str(kr.get("surah_name", ""))
-                    raw_ay = str(kr.get("ayah_text", ""))
-                    hl_ay = highlight_uthmani_keyword(raw_ay, clean_q)
-                    note_txt = str(kr.get("notes", "")).strip()
-                    g_info = surah_to_group_info.get(
-                        s_num, (f"المجموعة {kr.get('group_id', '')}", "", "")
-                    )
-                    with st.expander(
-                        f"«{kr['topic_or_keyword']}» — {s_name} ({s_num}:{a_num})",
-                        expanded=True,
-                    ):
-                        st.markdown(f"**🏛️ المجموعة:** {g_info[0]} — *{g_info[1]}*")
-                        if g_info[2]:
-                            st.info(f"🎯 **مقصد سورة {s_name}:** {g_info[2]}")
-                        st.markdown(f"### ﴿ {hl_ay} ﴾")
-                        if note_txt:
-                            st.caption(f"📝 **الملاحظة المسجلة:** {note_txt}")
-                        st.audio(
-                            get_everyayah_audio_url(s_num, a_num), format="audio/mp3"
+    # تجهيز القائمة الموحدة للآيات (المحفوظة أولاً + الجديدة من المصحف ثانياً)
+    combined_display_ayahs = []
+    for _, kr in matched_kw_records.iterrows():
+        s_n = int(kr["surah_number"])
+        a_n = int(kr["ayah_number"])
+        p_n, j_n = ayah_pages_map.get((s_n, a_n), (1, 1))
+        combined_display_ayahs.append(
+            {
+                "source": "saved",
+                "label": str(kr.get("topic_or_keyword", clean_q)),
+                "surah_number": s_n,
+                "surah_name": str(kr.get("surah_name", "")),
+                "ayah_number": a_n,
+                "ayah_text": str(kr.get("ayah_text", "")),
+                "notes": str(kr.get("notes", "")).strip(),
+                "page_number": p_n,
+                "juz": j_n,
+            }
+        )
+
+    for q in new_quran_ayahs:
+        s_n = int(q["surah_number"])
+        a_n = int(q["ayah_number"])
+        p_n, j_n = ayah_pages_map.get(
+            (s_n, a_n),
+            (int(q.get("page_number", 1)), int(q.get("juz", 1))),
+        )
+        combined_display_ayahs.append(
+            {
+                "source": "quran",
+                "label": clean_q,
+                "surah_number": s_n,
+                "surah_name": str(q.get("surah_name", "")),
+                "ayah_number": a_n,
+                "ayah_text": str(q.get("ayah_text", "")),
+                "notes": "",
+                "page_number": p_n,
+                "juz": j_n,
+            }
+        )
+
+    # صياغة رسالة النتائج الإحصائية الدقيقة
+    saved_cnt = len(saved_pairs)
+    quran_total_cnt = len(full_quran_hits)
+    if saved_cnt > 0 and saved_cnt == quran_total_cnt:
+        summary_msg = (
+            f"📊 نتيجة البحث عن «{clean_q}»: في ملف الحصر المعتمد ظهرت ({saved_cnt}) مرة، "
+            f"وهي مطابقة تماماً لعدد الآيات بالمصحف الشامل وعددها ({quran_total_cnt}) آية "
+            f"(موزعة على {len(matched_surahs)} سورة و{len(matched_topics)} مقطعاً موضوعياً)."
+        )
+    else:
+        summary_msg = (
+            f"📊 نتيجة البحث عن «{clean_q}»: في ملف الحصر المعتمد ظهرت ({saved_cnt}) مرة، "
+            f"بينما وردت في المصحف الشامل بعدد ({quran_total_cnt}) آية "
+            f"(موزعة على {len(matched_surahs)} سورة و{len(matched_topics)} مقطعاً موضوعياً)."
+        )
+    st.info(summary_msg)
+
+    # استخراج السور المرتبطة من الآيات الناتجة عن المسارين (1 و 2) حصراً
+    kw_linked_surahs = {p[0] for p in saved_pairs}
+    quran_linked_surahs = {int(q["surah_number"]) for q in full_quran_hits}
+    all_linked_surahs = kw_linked_surahs | quran_linked_surahs
+
+    # تصفية العمود الأول (المقاصد) والعمود الثاني (المقاطع) بناءً على سور الآيات فقط
+    matched_surahs = df_hierarchy[
+        df_hierarchy["surah_number"].astype(int).isin(all_linked_surahs)
+    ]
+
+    matched_topics = df_topics[
+        df_topics["surah_number"].astype(int).isin(all_linked_surahs)
+    ]
+
+    # تجهيز القائمة الموحدة للآيات (المحفوظة أولاً + الجديدة من المصحف ثانياً)
+    combined_display_ayahs = []
+    for _, kr in matched_kw_records.iterrows():
+        s_n = int(kr["surah_number"])
+        a_n = int(kr["ayah_number"])
+        p_n, j_n = ayah_pages_map.get((s_n, a_n), (1, 1))
+        combined_display_ayahs.append(
+            {
+                "source": "saved",
+                "label": str(kr.get("topic_or_keyword", clean_q)),
+                "surah_number": s_n,
+                "surah_name": str(kr.get("surah_name", "")),
+                "ayah_number": a_n,
+                "ayah_text": str(kr.get("ayah_text", "")),
+                "notes": str(kr.get("notes", "")).strip(),
+                "page_number": p_n,
+                "juz": j_n,
+            }
+        )
+
+    for q in new_quran_ayahs:
+        s_n = int(q["surah_number"])
+        a_n = int(q["ayah_number"])
+        p_n, j_n = ayah_pages_map.get(
+            (s_n, a_n),
+            (int(q.get("page_number", 1)), int(q.get("juz", 1))),
+        )
+        combined_display_ayahs.append(
+            {
+                "source": "quran",
+                "label": clean_q,
+                "surah_number": s_n,
+                "surah_name": str(q.get("surah_name", "")),
+                "ayah_number": a_n,
+                "ayah_text": str(q.get("ayah_text", "")),
+                "notes": "",
+                "page_number": p_n,
+                "juz": j_n,
+            }
+        )
+
+    if HAS_DOCX and (
+        not matched_surahs.empty or not matched_topics.empty or combined_display_ayahs
+    ):
+        st.download_button(
+            label=f"📄 تحميل بطاقة تدبر نتائج البحث عن «{clean_q}» بصيغة Word (.docx)",
+            data=generate_search_tadabbur_docx(
+                clean_q, matched_surahs, matched_topics, combined_display_ayahs
+            ),
+            file_name=f"Tadabbur_Search_{clean_q}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            key="dl_search_tadabbur_docx",
+        )
+
+    # عرض النتائج في الأعمدة الثلاثة المعتمدة
+    c_res1, c_res2, c_res3 = st.columns(3)
+
+    with c_res1:
+        st.markdown(f"#### 🎯 مقاصد السور المرتبطة ({len(matched_surahs)} سورة)")
+        if matched_surahs.empty:
+            st.info("لا توجد سور مطابقة.")
+        else:
+            for _, sr in matched_surahs.iterrows():
+                s_id = int(sr["surah_number"])
+                with st.expander(
+                    f"سورة {sr['surah_name']} ({s_id}) — {sr['group_name']}",
+                    expanded=True,
+                ):
+                    st.markdown(f"**مقصد المجموعة:** {sr['group_objective']}")
+                    st.markdown(f"**مقصد السورة:** {sr['surah_objective']}")
+
+    with c_res2:
+        st.markdown(f"#### 📑 مقاطع السور المرتبطة ({len(matched_topics)} مقطعاً)")
+        if matched_topics.empty:
+            st.info("لا توجد مقاطع تفصيلية مطابقة.")
+        else:
+            for _, tr in matched_topics.head(40).iterrows():
+                with st.expander(
+                    f"سورة {tr['surah_name']} — المقطع {int(tr['topic_order'])} ({tr['group_name']})",
+                    expanded=False,
+                ):
+                    st.write(tr["topic_detail"])
+
+    with c_res3:
+        st.markdown(f"#### 🔑 الشواهد القرآنية ({len(combined_display_ayahs)} شاهداً)")
+        if not combined_display_ayahs:
+            st.info("لم يتم العثور على آيات مطابقة في الحصر أو المصحف.")
+        else:
+            for idx_s, item in enumerate(combined_display_ayahs[:45]):
+                s_num = item["surah_number"]
+                a_num = item["ayah_number"]
+                s_name = item["surah_name"]
+                raw_ay = item["ayah_text"]
+                hl_ay = highlight_uthmani_keyword(raw_ay, clean_q)
+                note_txt = item["notes"]
+                g_info = surah_to_group_info.get(s_num, (0, "المجموعة", "", ""))
+                src_tag = "✅ بالحصر" if item["source"] == "saved" else "🆕 بالمصحف"
+
+                with st.expander(
+                    f"«{item['label']}» — {s_name} ({s_num}:{a_num}) [{src_tag}]",
+                    expanded=True,
+                ):
+                    if item["source"] == "saved":
+                        st.markdown(
+                            '<span class="badge-saved">✅ مسجلة بالحصر المعتمد</span>',
+                            unsafe_allow_html=True,
                         )
-                        if st.button(
-                            "📌 أضف لأرشيف التدبر (صفحة 8)",
-                            key=f"srch_arch_{idx_s}_{s_num}_{a_num}",
-                            use_container_width=True,
-                        ):
-                            ok, msg = save_ayah_to_memorization_archive(
-                                surah_serial=s_num,
-                                surah_name=s_name,
-                                ayah_number=a_num,
-                                ayah_text=raw_ay,
-                                status_label=f"تدبر بحث «{clean_q}» ({g_info[0]})",
-                            )
-                            if ok:
-                                st.success(msg)
-                            else:
-                                st.info(msg)
+                    else:
+                        st.markdown(
+                            '<span class="badge-new-quran">🆕 من المصحف الشامل (غير محفوظة بالحصر)</span>',
+                            unsafe_allow_html=True,
+                        )
+
+                    st.markdown(f"**🏛️ المجموعة:** {g_info[1]} — *{g_info[2]}*")
+                    if g_info[3]:
+                        st.info(f"🎯 **مقصد سورة {s_name}:** {g_info[3]}")
+
+                    st.markdown(f"﴿ {hl_ay} ﴾")
+                    st.caption(
+                        f"📄 صفحة المصحف: {item['page_number']} | الجزء: {item['juz']}"
+                    )
+                    if note_txt:
+                        st.caption(f"📝 **الملاحظة المسجلة:** {note_txt}")
+
+                    st.audio(get_everyayah_audio_url(s_num, a_num), format="audio/mp3")
+                    if st.button(
+                        "📌 أضف لأرشيف التدبر (صفحة 8)",
+                        key=f"srch_arch_{idx_s}_{s_num}_{a_num}",
+                        use_container_width=True,
+                    ):
+                        ok, msg = save_ayah_to_memorization_archive(
+                            surah_serial=s_num,
+                            surah_name=s_name,
+                            ayah_number=a_num,
+                            ayah_text=raw_ay,
+                            status_label=f"تدبر بحث «{clean_q}» ({g_info[1]})",
+                        )
+                        st.success(msg) if ok else st.info(msg)

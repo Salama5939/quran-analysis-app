@@ -365,6 +365,119 @@ def save_ayah_to_memorization_archive(
         return (False, f"❌ تعذّر الحفظ في الأرشيف: {e}")
 
 
+def save_keyword_bulk_to_relations(
+    keyword: str,
+    ayah_records: list[dict],
+    surah_to_group_map: dict,
+    custom_note: str = "",
+) -> tuple[bool, str]:
+    """
+    حفظ كلمة أو مفهوم جديد (أو آيات إضافية لمفهوم قائم) دفعة واحدة في جدول ayah_group_relations
+    بمطابقة كاملة لجميع الحقول الإلزامية في الجدول (بما في ذلك half_code و quarter_code و ayah_text و surah_serial).
+    """
+    clean_kw = str(keyword).strip()
+    if not clean_kw or not ayah_records:
+        return (False, "⚠️ لا توجد آيات صالحة للحفظ.")
+
+    try:
+        word_code = get_or_create_word_code(clean_kw)
+
+        # 1. جلب السجلات المسجلة مسبقاً لهذا المفهوم لمنع التكرار
+        existing_res = (
+            supabase.table("ayah_group_relations")
+            .select("surah_serial, ayah_number")
+            .eq("topic_or_keyword", clean_kw)
+            .range(0, 9999)
+            .execute()
+        )
+        existing_pairs = {
+            (int(r["surah_serial"]), int(r["ayah_number"]))
+            for r in (existing_res.data or [])
+            if r.get("surah_serial") is not None and r.get("ayah_number") is not None
+        }
+
+        # 2. جلب أكواد النصف والربع والمجموعة من السجلات المرجعية في قاعدة البيانات لكل سورة
+        surah_codes_res = (
+            supabase.table("ayah_group_relations")
+            .select("surah_serial, group_id, half_code, quarter_code")
+            .range(0, 9999)
+            .execute()
+        )
+        surah_codes_map = {}
+        for sc in surah_codes_res.data or []:
+            s_ser = sc.get("surah_serial")
+            if s_ser is not None and int(s_ser) not in surah_codes_map:
+                surah_codes_map[int(s_ser)] = {
+                    "group_id": int(sc.get("group_id") or 1),
+                    "half_code": int(sc.get("half_code") or 0),
+                    "quarter_code": int(sc.get("quarter_code") or 0),
+                }
+
+        norm_kw = normalize_arabic(clean_kw)
+        payload_rows = []
+
+        for rec in ayah_records:
+            s_num = int(rec["surah_number"])
+            s_name = str(rec.get("surah_name", "")).strip()
+            a_num = int(rec["ayah_number"])
+            raw_ayah_text = str(
+                rec.get("ayah_text") or rec.get("plain_ayah_text") or ""
+            ).strip()
+
+            if (s_num, a_num) in existing_pairs or not raw_ayah_text:
+                continue
+
+            g_id_map, g_obj = surah_to_group_map.get(s_num, (1, ""))
+            codes_info = surah_codes_map.get(s_num, {})
+            final_group_id = int(codes_info.get("group_id") or g_id_map or 1)
+            half_c = int(codes_info.get("half_code", 0))
+            quarter_c = int(codes_info.get("quarter_code", 0))
+
+            plain_txt = normalize_arabic(
+                str(rec.get("plain_ayah_text") or raw_ayah_text)
+            )
+            freq_cnt = plain_txt.split().count(norm_kw) if norm_kw else 1
+            freq_cnt = max(1, int(freq_cnt))
+
+            note_val = str(custom_note).strip() if str(custom_note).strip() else g_obj
+
+            payload_rows.append(
+                {
+                    "word_code": int(word_code),
+                    "topic_or_keyword": clean_kw,
+                    "group_id": final_group_id,
+                    "surah_serial": s_num,
+                    "surah_name": s_name,
+                    "ayah_number": a_num,
+                    "ayah_text": raw_ayah_text,
+                    "notes": note_val,
+                    "half_code": half_c,
+                    "quarter_code": quarter_c,
+                    "frequency_count": freq_cnt,
+                }
+            )
+            existing_pairs.add((s_num, a_num))
+
+        if not payload_rows:
+            return (
+                False,
+                f"ℹ️ جميع الآيات المطابقة للمفهوم «{clean_kw}» مسجلة مسبقاً في ملف الحصر.",
+            )
+
+        batch_size = 200
+        for i in range(0, len(payload_rows), batch_size):
+            supabase.table("ayah_group_relations").insert(
+                payload_rows[i : i + batch_size]
+            ).execute()
+
+        return (
+            True,
+            f"✅ تم اعتماد وحفظ المفهوم «{clean_kw}» بعدد ({len(payload_rows)}) آية جديدة في ملف الحصر بنجاح (كود المفهوم: {word_code})!",
+        )
+    except Exception as e:
+        return (False, f"❌ تعذّر حفظ المفهوم في قاعدة البيانات: {e}")
+
+
 # ==========================================
 # 6. خدمات الصوتيات وتنقية العرض وتأسيس مستندات Word (RTL)
 # ==========================================
