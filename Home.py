@@ -188,7 +188,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(
-    "<p style='text-align: center; color: #666666; font-size: 14px; margin-bottom: 18px;'>اختر البوابة المطلوبة للانتقال المباشر، أو تنقل بينها في أي وقت عبر القائمة الجانبية.</p>",
+    "<p style='text-align: center; color: #666666; font-size: 14px; margin-bottom: 18px;'>اختر البوابة المطلوبة للانتقال المباشر، ويمكنك العودة لهذه الشاشة في أي وقت عبر زر «🏠 الرئيسية» أعلى كل بوابة.</p>",
     unsafe_allow_html=True,
 )
 
@@ -273,6 +273,6 @@ for row_start in range(0, len(GATES), 3):
 
 st.markdown("---")
 st.markdown(
-    "<p style='text-align: center; color: #7A5C00; font-size: 13px;'>💡 يمكنك أيضاً التنقل السريع بين جميع البوابات الثمانية في أي وقت عبر القائمة الجانبية (Sidebar).</p>",
+    "<p style='text-align: center; color: #7A5C00; font-size: 13px;'>💡 للانتقال بين البوابات، استخدم زر «🏠 الرئيسية» الثابت أعلى كل بوابة للعودة السريعة إلى هذه اللوحة.</p>",
     unsafe_allow_html=True,
 )
