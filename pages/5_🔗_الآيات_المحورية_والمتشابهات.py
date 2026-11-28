@@ -12,6 +12,7 @@ from database import (
     normalize_arabic,
 )
 
+
 # 1. إعدادات الصفحة المستقلة
 st.set_page_config(
     page_title="الآيات المحورية وتقاطع الموضوعات والمتشابهات",
@@ -22,6 +23,7 @@ st.set_page_config(
 # تطبيق التنسيق المركزي الموحد وزر الرئيسية
 theme.apply_custom_theme()
 theme.add_home_button()
+theme.render_page_guide("gate5")
 
 # ==============================================================================
 # حقن التنسيق البصري الموحد (مطابق لهوية البوابة 4 والصفحتين 11 و 12)

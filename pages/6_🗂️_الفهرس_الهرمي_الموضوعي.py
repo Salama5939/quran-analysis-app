@@ -8,6 +8,7 @@ from database import (
     normalize_arabic,
 )
 
+
 # 1. إعدادات الصفحة المستقلة
 st.set_page_config(
     page_title="الفهرس الهرمي الموضوعي وإدارة موضوعات القرآن",
@@ -18,6 +19,7 @@ st.set_page_config(
 # تطبيق التنسيق المركزي الموحد وزر الرئيسية
 theme.apply_custom_theme()
 theme.add_home_button()
+theme.render_page_guide("gate6")
 
 # ==============================================================================
 # حقن التنسيق البصري الموحد (مطابق لهوية البوابتين 4 و 5 والصفحتين 11 و 12)

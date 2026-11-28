@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from theme import apply_custom_theme, add_home_button
+from theme import apply_custom_theme, add_home_button, render_page_guide
 from database import (
     supabase,
     normalize_arabic,
@@ -26,6 +26,7 @@ apply_custom_theme()
 
 # زر العودة السريع للصفحة الرئيسية
 add_home_button()
+render_page_guide("gate2")
 
 # ==============================================================================
 # تنسيقات CSS تكميلية مخصصة لهذه الصفحة (متناغمة مع خلفية #FBF9F1 في theme.py)

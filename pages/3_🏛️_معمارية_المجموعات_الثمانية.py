@@ -6,6 +6,7 @@ import importlib.util
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+import theme
 
 HAS_DOCX = importlib.util.find_spec("docx") is not None
 
@@ -25,6 +26,7 @@ from database import (
     init_rtl_docx,
 )
 
+
 # ==============================================================================
 # إعدادات الصفحة التجريبية المستقلة (في المجلد الجذري بجانب Home.py)
 # ==============================================================================
@@ -36,6 +38,7 @@ st.set_page_config(
 
 apply_custom_theme()
 add_home_button()
+theme.render_page_guide("gate3")
 
 # ==============================================================================
 # تنسيقات CSS مخصصة للصفحة

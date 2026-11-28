@@ -4,6 +4,7 @@ import streamlit as st
 from supabase import Client, create_client
 import theme
 
+
 # إعدادات الصفحة
 st.set_page_config(
     page_title="أرشيف الحفظ والتدبر الشخصي", page_icon="🎯", layout="wide"
@@ -12,6 +13,7 @@ st.set_page_config(
 # تطبيق التنسيق المركزي الموحد وزر الرئيسية
 theme.apply_custom_theme()
 theme.add_home_button()
+theme.render_page_guide("gate8")
 
 st.markdown("<h1>🎯 أرشيف الحفظ والتدبر الشخصي</h1>", unsafe_allow_html=True)
 st.markdown(
@@ -93,7 +95,7 @@ if not df.empty:
         "تاريخ الإضافة",
     ]
 
-    st.dataframe(display_df, width= "stretch", hide_index=True)
+    st.dataframe(display_df, width="stretch", hide_index=True)
 
     # خيار لحذف آية من الأرشيف عند الحاجة
     st.markdown("---")
