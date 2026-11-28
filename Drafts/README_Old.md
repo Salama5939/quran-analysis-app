@@ -1,7 +1,7 @@
 
 # 📖 النظام التحليلي الشامل للتدبر القرآني
 
-**Comprehensive Analytical System for Quranic Contemplation**
+Comprehensive Analytical System for Quranic Contemplation
 
 منصة رقمية تفاعلية متقدمة تهدف إلى تيسير تدبر القرآن الكريم، من خلال الجمع بين البحث اللغوي الدقيق، التحليل الموضوعي لمقاصد السور، والاستعراض البصري بالرسم العثماني الأصلي، مع دعم التلاوة الصوتية التلقائية.
 
@@ -41,6 +41,7 @@
 للباحثين والمطورين الراغبين في تشغيل النظام على أجهزتهم الشخصية:
 
 1. **استنساخ المستودع (Clone the repository):**
+
    ```bash
    git clone [https://github.com/YourUsername/YourRepositoryName.git](https://github.com/YourUsername/YourRepositoryName.git)
    cd YourRepositoryName

@@ -1,6 +1,6 @@
 # 📖 النظام التحليلي الشامل للتدبر القرآني والبحث الذكي
 
-**Comprehensive Analytical System for Quranic Contemplation & Smart Search**
+Comprehensive Analytical System for Quranic Contemplation & Smart Search
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-red.svg)](https://streamlit.io/)
@@ -66,6 +66,7 @@
 للباحثين والمطورين الراغبين في تشغيل النظام على أجهزتهم الشخصية:
 
 1. **استنساخ المستودع (Clone the repository):**
+
    ```bash
    git clone [https://github.com/YourUsername/Quran-Contemplation-System.git](https://github.com/YourUsername/Quran-Contemplation-System.git)
    cd Quran-Contemplation-System

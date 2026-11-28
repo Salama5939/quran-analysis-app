@@ -1,6 +1,6 @@
 # 📖 النظام التحليلي الشامل للتدبر القرآني والبحث الذكي
 
-**Comprehensive Analytical System for Quranic Contemplation & Smart Search**
+Comprehensive Analytical System for Quranic Contemplation & Smart Search
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-red.svg)](https://streamlit.io/)
@@ -69,11 +69,13 @@
    git clone https://github.com/YourUsername/Quran-Contemplation-System.git
    cd Quran-Contemplation-System
    ```
+
 2. **تثبيت الحزم المطلوبة (Install dependencies):**
 
    ```bash
    pip install -r requirements.txt
    ```
+
 3. **إعداد متغيرات البيئة (Environment Variables):**
    قم بإنشاء ملف `.env` وأضف بيانات اتصال Supabase الخاصة بك:
 
@@ -81,6 +83,7 @@
    SUPABASE_URL="your_supabase_url"
    SUPABASE_KEY="your_supabase_key"
    ```
+
 4. **تشغيل التطبيق (Run the application):**
 
    ```bash
